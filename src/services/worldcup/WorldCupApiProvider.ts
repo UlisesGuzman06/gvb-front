@@ -1,4 +1,5 @@
 import { Fixture, LiveScore, Standing, GoalScorer, Squad } from '@/types/worldcup';
+import API_URL from '@/config/api';
 
 export class WorldCupApiProvider {
   private baseUrl: string;
@@ -33,7 +34,7 @@ export class WorldCupApiProvider {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    const response = await fetch('http://localhost:4000/matches', { headers });
+    const response = await fetch(`${API_URL}/matches`, { headers });
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }

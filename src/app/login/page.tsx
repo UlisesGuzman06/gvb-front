@@ -8,6 +8,8 @@ import { theme } from '@/styles/theme';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, User, Mail, Lock, Shield, CheckCircle, AlertCircle, Trophy, Target, Sparkles, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import API_URL from '@/config/api';
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -80,7 +82,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:4000/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -119,7 +121,7 @@ export default function LoginPage() {
     // Pre-check if email is already taken before moving to step 2
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/auth/check-email', {
+      const res = await fetch(`${API_URL}/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -150,7 +152,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:4000/auth/register', {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, champion, subchampion, topScorer, goldenBall, goldenGlove }),

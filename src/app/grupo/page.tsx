@@ -19,6 +19,7 @@ import {
   Target
 } from 'lucide-react';
 import Link from 'next/link';
+import API_URL from '@/config/api';
 
 interface ParticipantBonus {
   champion: string;
@@ -65,7 +66,7 @@ export default function GrupoPage() {
     const token = localStorage.getItem('gvb_token');
     if (!token) return;
 
-    fetch('http://localhost:4000/users', {
+    fetch(`${API_URL}/users`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => {

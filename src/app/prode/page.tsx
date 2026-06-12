@@ -19,6 +19,8 @@ import {
   Award,
   HelpCircle
 } from 'lucide-react';
+import API_URL from '@/config/api';
+
 
 interface PredictionItem {
   homeScore: number | '';
@@ -77,7 +79,7 @@ export default function ProdePage() {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     // Load predictions from API
-    fetch('http://localhost:4000/predictions/my', { headers })
+    fetch(`${API_URL}/predictions/my`, { headers })
       .then(res => {
         if (!res.ok) throw new Error('Failed to load predictions');
         return res.json();
@@ -88,7 +90,7 @@ export default function ProdePage() {
       .catch(err => console.error('Error loading predictions:', err));
 
     // Load bonuses from API
-    fetch('http://localhost:4000/predictions/bonus/my', { headers })
+    fetch(`${API_URL}/predictions/bonus/my`, { headers })
       .then(res => {
         if (!res.ok) throw new Error('Failed to load bonus');
         return res.json();
@@ -176,7 +178,7 @@ export default function ProdePage() {
     
     try {
       const token = localStorage.getItem('gvb_token');
-      const response = await fetch('http://localhost:4000/predictions/save', {
+      const response = await fetch(`${API_URL}/predictions/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

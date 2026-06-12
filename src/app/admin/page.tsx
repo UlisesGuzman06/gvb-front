@@ -20,6 +20,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import Link from 'next/link';
+import API_URL from '@/config/api';
 
 interface UserItem {
   id: string;
@@ -102,7 +103,7 @@ export default function AdminPage() {
     const token = localStorage.getItem('gvb_token');
     if (!token) return;
 
-    fetch('http://localhost:4000/users', {
+    fetch(`${API_URL}/users`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -132,7 +133,7 @@ export default function AdminPage() {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     // Load matches predictions
-    fetch(`http://localhost:4000/predictions/user/${selectedUserId}`, { headers })
+    fetch(`${API_URL}/predictions/user/${selectedUserId}`, { headers })
       .then(res => res.json())
       .then(data => {
         setUserPredictions(data);
@@ -140,7 +141,7 @@ export default function AdminPage() {
       .catch(err => console.error('Error loading user predictions:', err));
 
     // Load special bonus predictions
-    fetch(`http://localhost:4000/predictions/bonus/user/${selectedUserId}`, { headers })
+    fetch(`${API_URL}/predictions/bonus/user/${selectedUserId}`, { headers })
       .then(res => res.json())
       .then(data => {
         setUserBonus({
@@ -157,7 +158,7 @@ export default function AdminPage() {
   // Load official tournament results
   useEffect(() => {
     const token = localStorage.getItem('gvb_token');
-    fetch('http://localhost:4000/matches/tournament/config', {
+    fetch(`${API_URL}/matches/tournament/config`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -225,7 +226,7 @@ export default function AdminPage() {
     setIsLoadingAction(true);
     try {
       const token = localStorage.getItem('gvb_token');
-      const response = await fetch(`http://localhost:4000/matches/${matchId}/result`, {
+      const response = await fetch(`${API_URL}/matches/${matchId}/result`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -262,7 +263,7 @@ export default function AdminPage() {
     setIsLoadingAction(true);
     try {
       const token = localStorage.getItem('gvb_token');
-      const response = await fetch(`http://localhost:4000/predictions/admin/${selectedUserId}`, {
+      const response = await fetch(`${API_URL}/predictions/admin/${selectedUserId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -292,7 +293,7 @@ export default function AdminPage() {
     setIsLoadingAction(true);
     try {
       const token = localStorage.getItem('gvb_token');
-      const response = await fetch(`http://localhost:4000/predictions/bonus/admin/${selectedUserId}`, {
+      const response = await fetch(`${API_URL}/predictions/bonus/admin/${selectedUserId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -320,7 +321,7 @@ export default function AdminPage() {
     setIsLoadingAction(true);
     try {
       const token = localStorage.getItem('gvb_token');
-      const response = await fetch('http://localhost:4000/matches/tournament/results', {
+      const response = await fetch(`${API_URL}/matches/tournament/results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
