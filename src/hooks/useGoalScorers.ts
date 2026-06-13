@@ -10,12 +10,5 @@ export function useGoalScorers() {
     queryFn: () => worldCupApi.getGoalScorers(),
   });
 
-  console.log('[useGoalScorers] state:', {
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    error: query.error?.message || null,
-    dataCount: query.data?.length || 0,
-  });
-
   return query;
 }

@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Countdown } from '@/components/ui/Countdown';
