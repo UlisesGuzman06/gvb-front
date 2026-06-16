@@ -279,7 +279,11 @@ export default function Home() {
                 <option value="todos">Todos los Días</option>
                 {uniqueDays.map((day: string) => (
                   <option key={day} value={day}>
-                    {new Date(`${day}T12:00:00Z`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                    {new Date(`${day}T12:00:00Z`).toLocaleDateString('es-AR', {
+                      day: '2-digit',
+                      month: 'short',
+                      timeZone: 'America/Argentina/Buenos_Aires'
+                    })}
                   </option>
                 ))}
               </select>

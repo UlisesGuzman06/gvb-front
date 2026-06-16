@@ -154,7 +154,8 @@ export default function ProdePage() {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/Argentina/Buenos_Aires'
     }) + ' hs';
   };
 
