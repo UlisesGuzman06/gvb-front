@@ -47,9 +47,10 @@ export default function ReglamentoPage() {
               Pautas oficiales de puntuación, plazos de entrega y resolución de desempates para el Prode GVB Copa Mundial 2026.
             </p>
           </div>
-          <div className="bg-[#13315C] border-2 border-[#111111] p-4 shadow-[4px_4px_0px_0px_#B8860B] text-center w-full sm:w-auto">
-            <span className={cn("text-xs block text-gray-400 font-bold uppercase tracking-widest mb-1", theme.typography.body)}>Premio Mayor</span>
-            <span className={cn("text-3xl text-white font-bold block", theme.typography.numbers)}>$1000 USD</span>
+          <div className="bg-[#13315C] border-2 border-[#111111] p-4 shadow-[4px_4px_0px_0px_#B8860B] text-center w-full sm:w-auto flex flex-col items-center justify-center">
+            <span className={cn("text-xs block text-gray-400 font-bold uppercase tracking-widest mb-1", theme.typography.body)}>Premio Total</span>
+            <span className={cn("text-3xl text-white font-bold block mb-1", theme.typography.numbers)}>$1000 USD</span>
+            <span className="text-[10px] text-gray-300 font-mono">1°: 60% ($600) | 2°: 25% ($250) | 3°: 15% ($150)</span>
           </div>
         </div>
 
@@ -332,13 +333,13 @@ export default function ReglamentoPage() {
                 <h3 className="text-lg font-bold uppercase tracking-wider">Cierre de Pronósticos</h3>
               </div>
               <p className="text-gray-300 text-sm font-inter leading-relaxed">
-                Los pronósticos podrán cargarse y modificarse **hasta las 23:59 del día anterior al partido**. Una vez que venza ese plazo, las celdas correspondientes a dicho partido quedarán completamente bloqueadas por el administrador de la plataforma.
+                Los pronósticos podrán cargarse y modificarse **hasta 10 minutos antes del comienzo de cada partido**. Una vez que venza ese plazo, las celdas correspondientes a dicho partido quedarán completamente bloqueadas por el administrador de la plataforma.
               </p>
               
               <div className="bg-[#0B2545] border border-[#111111] p-3 text-xs font-mono text-gray-400">
                 <span className="font-bold block text-[#B8860B] uppercase tracking-wider mb-1">Ejemplo Práctico:</span>
-                <div>Partido disputado: <span className="text-white">14 de junio a las 02:00</span></div>
-                <div>Límite de carga: <span className="text-green-400 font-bold">13 de junio a las 23:59</span></div>
+                <div>Partido disputado: <span className="text-white">14 de junio a las 02:00 hs</span></div>
+                <div>Límite de carga: <span className="text-green-400 font-bold">14 de junio a las 01:50 hs</span></div>
               </div>
             </div>
 
@@ -353,7 +354,7 @@ export default function ReglamentoPage() {
               </p>
               
               <div className="bg-amber-950/20 border border-amber-900 p-3 text-xs text-amber-200">
-                <strong>Nota:</strong> Evita penalizaciones de puntuación asegurándote de guardar todas tus predicciones con suficiente antelación a las 23:59 del día anterior.
+                <strong>Nota:</strong> Evita penalizaciones de puntuación asegurándote de guardar todas tus predicciones con suficiente antelación al inicio del partido.
               </div>
             </div>
 

@@ -130,30 +130,32 @@ export default function ProdePage() {
     return Array.from(teams).sort();
   }, [allMatches]);
 
-  // Lock logic helper: predictions close at 23:59 of the day BEFORE the match
-  const getLockLimit = (matchDateStr: string) => {
+  // Lock logic helper: predictions close 10 minutes before match start
+  const getLockLimit = (matchDateStr: string, matchTimeStr: string) => {
     try {
-      const matchDate = new Date(`${matchDateStr}T00:00:00Z`);
-      const dayBefore = new Date(matchDate.getTime() - 24 * 60 * 60 * 1000);
-      const lockYear = dayBefore.getUTCFullYear();
-      const lockMonth = String(dayBefore.getUTCMonth() + 1).padStart(2, '0');
-      const lockDay = String(dayBefore.getUTCDate()).padStart(2, '0');
-      return new Date(`${lockYear}-${lockMonth}-${lockDay}T23:59:59`);
+      const matchStart = new Date(`${matchDateStr}T${matchTimeStr || '12:00:00'}Z`);
+      return new Date(matchStart.getTime() - 10 * 60 * 1000);
     } catch (e) {
       return new Date();
     }
   };
 
-  const isMatchLocked = (matchDateStr: string) => {
-    const lockLimit = getLockLimit(matchDateStr);
+  const isMatchLocked = (match: any) => {
+    if (match.status === 'FINISHED') return true;
+    const lockLimit = getLockLimit(match.date, match.time);
     const now = new Date();
     return now.getTime() > lockLimit.getTime();
   };
 
   // Format lock date for display
-  const formatLockDate = (matchDateStr: string) => {
-    const limit = getLockLimit(matchDateStr);
-    return limit.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' a las 23:59';
+  const formatLockDate = (match: any) => {
+    const limit = getLockLimit(match.date, match.time);
+    return limit.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) + ' hs';
   };
 
   // Prediction input handlers
@@ -527,7 +529,7 @@ export default function ProdePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {groupedMatchesByRound[roundName].map(match => {
                         const pred = predictions[match.id] || { homeScore: '', awayScore: '' };
-                        const isLocked = isMatchLocked(match.date) || match.status === 'FINISHED';
+                        const isLocked = isMatchLocked(match);
                         const isDouble = isDoublePointsMatch(match);
                         const realResult = (match.status === 'FINISHED' && match.homeScore !== null && match.awayScore !== null ? { home: match.homeScore as number, away: match.awayScore as number } : null);
 
@@ -623,7 +625,7 @@ export default function ProdePage() {
                               
                               {!isLocked && (
                                 <span className="text-gray-400 text-[10px] font-mono">
-                                  Límite: {formatLockDate(match.date)}
+                                  Límite: {formatLockDate(match)}
                                 </span>
                               )}
 
