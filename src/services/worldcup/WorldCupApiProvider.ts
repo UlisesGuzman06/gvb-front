@@ -47,10 +47,12 @@ export class WorldCupApiProvider {
 
   async getStandings(group: string): Promise<Standing[]> {
     const fixtures = await this.getFixtures();
-    const groupName = `Group ${group.toUpperCase()}`;
-    const groupMatches = fixtures.filter(m => 
-      m.group && m.group.toUpperCase() === groupName.toUpperCase()
-    );
+    const groupUpper = group.toUpperCase();
+    const groupMatches = fixtures.filter(m => {
+      if (!m.group) return false;
+      const mGroupUpper = m.group.toUpperCase();
+      return mGroupUpper === `GROUP ${groupUpper}` || mGroupUpper === `GRUPO ${groupUpper}`;
+    });
 
     const getTeamId = (name: string): number => {
       let hash = 0;

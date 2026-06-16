@@ -12,7 +12,6 @@ import { MatchCardSkeleton, ParticipantCardSkeleton } from '@/components/ui/Skel
 import { useMatches } from '@/hooks/useMatches';
 import { useUpcomingMatches } from '@/hooks/useUpcomingMatches';
 import { useStandings } from '@/hooks/useStandings';
-import { useGoalScorers } from '@/hooks/useGoalScorers';
 import { useFootball } from '@/providers/FootballProvider';
 
 import { theme } from '@/styles/theme';
@@ -49,16 +48,12 @@ export default function Home() {
     error: errorStandings
   } = useStandings(selectedGroup);
 
-  const {
-    data: goalscorers = [],
-    isLoading: isLoadingScorers,
-    isError: isErrorScorers,
-  } = useGoalScorers();
+
 
   const { worldCupApi } = useFootball();
 
-  const isLoading = isLoadingAllMatches || isLoadingStandings || isLoadingScorers;
-  const isError = isErrorAllMatches || isErrorStandings || isErrorScorers;
+  const isLoading = isLoadingAllMatches || isLoadingStandings;
+  const isError = isErrorAllMatches || isErrorStandings;
 
   useEffect(() => {
     if (!isLoading) {
@@ -344,13 +339,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CLASIFICACIÓN (TABLA DE GRUPOS REAL) & GOLEADORES */}
+      {/* CLASIFICACIÓN (TABLA DE GRUPOS REAL) */}
       <section id="posiciones" className={cn(theme.layout.section, "bg-[#E8E2D6] text-[#111111]")}>
         <div className={theme.layout.container}>
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
+          <div className="max-w-4xl mx-auto">
             
             {/* STANDINGS TABLE */}
-            <div className="xl:col-span-7">
+            <div className="w-full">
               <SectionTitle subtitle="Tabla de posiciones oficial del torneo">Clasificación</SectionTitle>
               
               {/* Group Selector Tabs */}
@@ -435,63 +430,6 @@ export default function Home() {
                 />
               )}
             </div>
-
-            {/* TOP GOALSCORERS */}
-            <div id="goleadores" className="xl:col-span-5">
-              <SectionTitle subtitle="Máximos anotadores en tiempo real">Goleadores</SectionTitle>
-              
-              {isLoadingScorers ? (
-                <div className="flex flex-col gap-3">
-                  <ParticipantCardSkeleton />
-                  <ParticipantCardSkeleton />
-                </div>
-              ) : goalscorers.length > 0 ? (
-                <div className="border border-[#111111] bg-white divide-y divide-[#E0DBCF] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
-                  {goalscorers.slice(0, 5).map((row, idx) => (
-                    <div key={row.player.id} className="flex items-center justify-between p-4 hover:bg-[#F4F1EA] transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-sm font-bold text-gray-500 w-4">
-                          {idx + 1}
-                        </span>
-                        
-                        <div className="w-10 h-10 bg-[#F4F1EA] border border-[#CCCCCC] overflow-hidden shrink-0">
-                          {row.player.photo ? (
-                            <img src={row.player.photo} alt={row.player.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center font-bold text-[#111111] text-xs">
-                              {row.player.name.substring(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-sm truncate">{row.player.name}</h4>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <div className="w-4 h-4 bg-gray-100 border border-[#CCCCCC] flex items-center justify-center overflow-hidden shrink-0">
-                              {row.team.logo && (
-                                <img src={row.team.logo} alt={row.team.name} className="w-full h-full object-contain" />
-                              )}
-                            </div>
-                            <span className="text-[10px] text-gray-500 uppercase font-semibold">{row.team.name}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0 pl-3">
-                        <div className="text-lg font-bold text-[#B8860B]">{row.goals} Goles</div>
-                        <div className="text-[10px] text-gray-500">{row.assists} Asistencias</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  title="Estadísticas no disponibles" 
-                  description="Información de goleadores no disponible en este momento."
-                />
-              )}
-            </div>
-
           </div>
         </div>
       </section>
