@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Countdown } from '@/components/ui/Countdown';
 import { MatchCard } from '@/components/ui/MatchCard';
@@ -24,6 +24,10 @@ export default function Home() {
   const [selectedGroup, setSelectedGroup] = useState<string>('A');
   const [visibleMatchesCount, setVisibleMatchesCount] = useState<number>(10);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedStage, setSelectedStage] = useState<string>('todos');
+  const [selectedDay, setSelectedDay] = useState<string>('todos');
 
   // Fetch real data from hooks
   const { 
@@ -62,17 +66,6 @@ export default function Home() {
     }
   }, [isLoading]);
 
-  // Sort fixtures by date and time
-  const sortedMatches = [...allMatches].sort((a, b) => {
-    const timeA = new Date(`${a.date}T${a.time}Z`).getTime();
-    const timeB = new Date(`${b.date}T${b.time}Z`).getTime();
-    return timeA - timeB;
-  });
-
-  // Paginated visible matches
-  const visibleMatches = sortedMatches.slice(0, visibleMatchesCount);
-  const hasMoreMatches = sortedMatches.length > visibleMatchesCount;
-
   // Helper to get Argentina date string
   const getArgentinaDateString = (dateStr: string, timeStr: string) => {
     if (!dateStr || !timeStr) return dateStr || 'Fecha no disponible';
@@ -94,6 +87,80 @@ export default function Home() {
     }
   };
 
+  // Filter matches based on search query, stage/round and day
+  const filteredMatches = useMemo(() => {
+    return allMatches.filter((match: Fixture) => {
+      // 1. Search Query Filter (Home Team or Away Team)
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase().trim();
+        const homeName = (match.home?.name || '').toLowerCase();
+        const awayName = (match.away?.name || '').toLowerCase();
+        if (!homeName.includes(query) && !awayName.includes(query)) {
+          return false;
+        }
+      }
+
+      // 2. Stage/Round Filter
+      if (selectedStage !== 'todos') {
+        const round = (match.round || '').toLowerCase();
+        if (selectedStage === 'grupos') {
+          // Fase de grupos includes all "Fecha X"
+          if (!round.includes('fecha')) return false;
+        } else if (selectedStage === 'eliminatoria') {
+          // Fase eliminatoria includes everything that is NOT "Fecha X"
+          if (round.includes('fecha')) return false;
+        } else {
+          // Exact round match (e.g. "fecha 1", "octavos de final", etc)
+          if (round !== selectedStage.toLowerCase()) return false;
+        }
+      }
+
+      // 3. Day/Date Filter
+      if (selectedDay !== 'todos') {
+        const argDate = getArgentinaDateString(match.date, match.time);
+        if (argDate !== selectedDay) return false;
+      }
+
+      return true;
+    });
+  }, [allMatches, searchQuery, selectedStage, selectedDay]);
+
+  // Sort filtered matches by date and time
+  const sortedMatches = useMemo(() => {
+    return [...filteredMatches].sort((a, b) => {
+      const timeA = new Date(`${a.date}T${a.time}Z`).getTime();
+      const timeB = new Date(`${b.date}T${b.time}Z`).getTime();
+      return timeA - timeB;
+    });
+  }, [filteredMatches]);
+
+  // Paginated visible matches
+  const visibleMatches = useMemo(() => {
+    return sortedMatches.slice(0, visibleMatchesCount);
+  }, [sortedMatches, visibleMatchesCount]);
+
+  const hasMoreMatches = sortedMatches.length > visibleMatchesCount;
+
+  // Get unique days for day filter based on current stage selection
+  const uniqueDays = useMemo(() => {
+    const days = new Set<string>();
+    allMatches.forEach((match: Fixture) => {
+      // If a stage filter is active, only include days from that stage
+      if (selectedStage !== 'todos') {
+        const round = (match.round || '').toLowerCase();
+        if (selectedStage === 'grupos' && !round.includes('fecha')) return;
+        if (selectedStage === 'eliminatoria' && round.includes('fecha')) return;
+        if (selectedStage !== 'grupos' && selectedStage !== 'eliminatoria' && round !== selectedStage.toLowerCase()) return;
+      }
+      
+      const argDate = getArgentinaDateString(match.date, match.time);
+      if (argDate && argDate !== 'Fecha no disponible') {
+        days.add(argDate);
+      }
+    });
+    return Array.from(days).sort();
+  }, [allMatches, selectedStage]);
+
   // Helper to format date headers (e.g. "11 JUN 2026")
   const formatDateHeader = (dateStr: string) => {
     try {
@@ -109,7 +176,7 @@ export default function Home() {
 
   // Group visible matches by Argentina local date string
   const groupedMatches: Record<string, Fixture[]> = {};
-  visibleMatches.forEach(match => {
+  visibleMatches.forEach((match: Fixture) => {
     const dateKey = getArgentinaDateString(match.date, match.time);
     if (!groupedMatches[dateKey]) {
       groupedMatches[dateKey] = [];
@@ -158,6 +225,67 @@ export default function Home() {
             </span>
           </div>
           
+          {/* FILTROS DE BÚSQUEDA Y SELECCIÓN */}
+          <div className="bg-[#13315C] border-2 border-[#111111] p-4 shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] mb-8 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between animate-fade-in">
+            {/* Buscador de país */}
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setVisibleMatchesCount(10);
+                }}
+                placeholder="Buscar selección..."
+                className="w-full bg-[#0B2545] border border-[#CCCCCC]/20 text-white text-xs font-bold p-3 outline-none focus:border-[#B8860B] placeholder-gray-400"
+              />
+            </div>
+
+            {/* Filtrar por fase */}
+            <div className="w-full md:w-auto">
+              <select
+                value={selectedStage}
+                onChange={(e) => {
+                  setSelectedStage(e.target.value);
+                  setSelectedDay('todos'); // Resetear día al cambiar de fase
+                  setVisibleMatchesCount(10);
+                }}
+                className="w-full md:w-auto bg-[#0B2545] border border-[#CCCCCC]/20 text-white text-xs font-bold uppercase tracking-wider p-3 outline-none focus:border-[#B8860B] cursor-pointer"
+              >
+                <option value="todos">Todas las Fases</option>
+                <option value="grupos">Fase de Grupos (Todo)</option>
+                <option value="fecha 1">Fase de Grupos - Fecha 1</option>
+                <option value="fecha 2">Fase de Grupos - Fecha 2</option>
+                <option value="fecha 3">Fase de Grupos - Fecha 3</option>
+                <option value="16avos de Final">16avos de Final</option>
+                <option value="Octavos de Final">Octavos de Final</option>
+                <option value="Cuartos de Final">Cuartos de Final</option>
+                <option value="Semifinal">Semifinales</option>
+                <option value="Tercer Puesto">Tercer Puesto</option>
+                <option value="Final">Final</option>
+              </select>
+            </div>
+
+            {/* Filtrar por día */}
+            <div className="w-full md:w-auto">
+              <select
+                value={selectedDay}
+                onChange={(e) => {
+                  setSelectedDay(e.target.value);
+                  setVisibleMatchesCount(10);
+                }}
+                className="w-full md:w-auto bg-[#0B2545] border border-[#CCCCCC]/20 text-white text-xs font-bold uppercase tracking-wider p-3 outline-none focus:border-[#B8860B] cursor-pointer"
+              >
+                <option value="todos">Todos los Días</option>
+                {uniqueDays.map((day: string) => (
+                  <option key={day} value={day}>
+                    {new Date(`${day}T12:00:00Z`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {isLoadingAllMatches ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <MatchCardSkeleton />
@@ -410,10 +538,11 @@ export default function Home() {
             <div className="bg-[#1A1A1A] p-8 sm:p-10 border border-[#333333] shadow-[4px_4px_0px_0px_#B8860B] sm:shadow-[8px_8px_0px_0px_#B8860B]">
               <h2 className={cn("text-4xl sm:text-5xl mb-6 text-white text-center", theme.typography.heading)}>El Gran Premio</h2>
               <div className="text-center">
-                <span className={cn("text-6xl sm:text-7xl block text-[#B8860B] mb-4", theme.typography.numbers)}>$1000</span>
-                <p className="text-[#F4F1EA] uppercase tracking-widest font-bold">Para el Primer Puesto</p>
-                <div className="mt-8 border-t border-[#333333] pt-8">
-                  <p className="text-sm text-[#F4F1EA] opacity-80">El honor, la gloria y el prestigio de ser el campeón indiscutido de GVB WORLD CUP 2026.</p>
+                <span className={cn("text-5xl sm:text-6xl block text-[#B8860B] mb-4", theme.typography.numbers)}>A DEFINIR</span>
+                <p className="text-[#F4F1EA] uppercase tracking-widest font-bold">Pozo Recaudado</p>
+                <div className="mt-8 border-t border-[#333333] pt-8 space-y-2">
+                  <p className="text-sm text-[#F4F1EA] font-mono">1° Puesto: 60% | 2° Puesto: 25% | 3° Puesto: 15%</p>
+                  <p className="text-xs text-[#F4F1EA] opacity-60">El pozo final de dinero acumulado se distribuirá entre las mejores tres posiciones al terminar la Copa.</p>
                 </div>
               </div>
             </div>

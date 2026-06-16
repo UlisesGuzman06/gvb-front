@@ -49,8 +49,8 @@ export default function ReglamentoPage() {
           </div>
           <div className="bg-[#13315C] border-2 border-[#111111] p-4 shadow-[4px_4px_0px_0px_#B8860B] text-center w-full sm:w-auto flex flex-col items-center justify-center">
             <span className={cn("text-xs block text-gray-400 font-bold uppercase tracking-widest mb-1", theme.typography.body)}>Premio Total</span>
-            <span className={cn("text-3xl text-white font-bold block mb-1", theme.typography.numbers)}>$60.000 ARS</span>
-            <span className="text-[10px] text-gray-300 font-mono">1°: 60% ($36.000) | 2°: 25% ($15.000) | 3°: 15% ($9.000)</span>
+            <span className={cn("text-3xl text-white font-bold block mb-1", theme.typography.numbers)}>A definir</span>
+            <span className="text-[10px] text-gray-300 font-mono">1° Puesto: 60% | 2° Puesto: 25% | 3° Puesto: 15% (del pozo total)</span>
           </div>
         </div>
 
