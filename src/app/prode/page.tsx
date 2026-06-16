@@ -219,7 +219,7 @@ export default function ProdePage() {
     
     // Group stage rivalries (e.g. Mexico vs South Africa, Czech Republic vs South Korea, Germany vs England if they exist in fixture)
     // We check if it's group stage and if there is a rivalry
-    const isGroupStage = match.round?.toLowerCase().includes('matchday') || match.round?.toLowerCase().includes('group');
+    const isGroupStage = (match.round || '').toLowerCase().includes('fecha') || (match.round || '').toLowerCase().includes('matchday') || (match.group || '').toLowerCase().includes('grupo') || (match.group || '').toLowerCase().includes('group');
     
     return isArgentina; // For now, Argentina matches in group stage are double points
   };
@@ -227,13 +227,19 @@ export default function ProdePage() {
   // Group Matches Filtered
   const filteredMatches = useMemo(() => {
     return allMatches.filter(m => {
-      const isKnockout = !m.round?.toLowerCase().includes('matchday') && !m.round?.toLowerCase().includes('group');
+      const isKnockout = !(m.round || '').toLowerCase().includes('fecha') && !(m.round || '').toLowerCase().includes('matchday');
       
       if (activeStage === 'groups') {
         if (isKnockout) return false;
-        // Check group matching
-        const groupTerm = `Group ${selectedGroup.toUpperCase()}`;
-        return m.group?.toLowerCase() === groupTerm.toLowerCase() || m.round?.toLowerCase().includes(groupTerm.toLowerCase());
+        // Check group matching (supports Spanish and English)
+        const groupTermEs = `Grupo ${selectedGroup.toUpperCase()}`;
+        const groupTermEn = `Group ${selectedGroup.toUpperCase()}`;
+        const matchGroup = (m.group || '').toLowerCase();
+        const matchRound = (m.round || '').toLowerCase();
+        return matchGroup === groupTermEs.toLowerCase() || 
+               matchGroup === groupTermEn.toLowerCase() || 
+               matchRound.includes(groupTermEs.toLowerCase()) || 
+               matchRound.includes(groupTermEn.toLowerCase());
       } else {
         return isKnockout;
       }

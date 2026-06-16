@@ -43,8 +43,8 @@ export default function LoginPage() {
   const teamsList = useMemo(() => {
     const teams = new Set<string>();
     allMatches.forEach(m => {
-      // Only include teams from group stage matches
-      const isGroupMatch = m.round?.toLowerCase().includes('matchday') || m.group;
+      // Only include teams from group stage matches (supports Spanish and English)
+      const isGroupMatch = (m.round || '').toLowerCase().includes('fecha') || (m.round || '').toLowerCase().includes('matchday') || m.group;
       if (!isGroupMatch) return;
       if (m.home?.name && !PLACEHOLDER_PATTERNS.test(m.home.name)) teams.add(m.home.name);
       if (m.away?.name && !PLACEHOLDER_PATTERNS.test(m.away.name)) teams.add(m.away.name);

@@ -191,12 +191,19 @@ export default function AdminPage() {
   // Group Matches Filtered
   const filteredMatches = useMemo(() => {
     return allMatches.filter(m => {
-      const isKnockout = !m.round?.toLowerCase().includes('matchday') && !m.round?.toLowerCase().includes('group');
+      const isKnockout = !(m.round || '').toLowerCase().includes('fecha') && !(m.round || '').toLowerCase().includes('matchday');
       
       if (activeStage === 'groups') {
         if (isKnockout) return false;
-        const groupTerm = `Group ${selectedGroup.toUpperCase()}`;
-        return m.group?.toLowerCase() === groupTerm.toLowerCase() || m.round?.toLowerCase().includes(groupTerm.toLowerCase());
+        // Check group matching (supports Spanish and English)
+        const groupTermEs = `Grupo ${selectedGroup.toUpperCase()}`;
+        const groupTermEn = `Group ${selectedGroup.toUpperCase()}`;
+        const matchGroup = (m.group || '').toLowerCase();
+        const matchRound = (m.round || '').toLowerCase();
+        return matchGroup === groupTermEs.toLowerCase() || 
+               matchGroup === groupTermEn.toLowerCase() || 
+               matchRound.includes(groupTermEs.toLowerCase()) || 
+               matchRound.includes(groupTermEn.toLowerCase());
       } else {
         return isKnockout;
       }
