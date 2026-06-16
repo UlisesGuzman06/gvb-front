@@ -615,11 +615,23 @@ export default function ProdePage() {
                             {/* Subtitle details (Date, Time, lock warning) */}
                             <div className="mt-3 pt-3 border-t border-[#0B2545] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
                               <span className="text-gray-400 font-mono">
-                                {match.date} a las {(() => {
-                                  // Convert UTC time to Argentina time (UTC-3)
-                                  const [h, m] = match.time.substring(0, 5).split(':').map(Number);
-                                  const argHour = (h - 3 + 24) % 24;
-                                  return `${String(argHour).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                                {(() => {
+                                  try {
+                                    const utcDate = new Date(`${match.date}T${match.time.substring(0, 8)}Z`);
+                                    return utcDate.toLocaleDateString('es-AR', {
+                                      timeZone: 'America/Argentina/Buenos_Aires',
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric'
+                                    }) + ' a las ' + utcDate.toLocaleTimeString('es-AR', {
+                                      timeZone: 'America/Argentina/Buenos_Aires',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false
+                                    }) + ' hs';
+                                  } catch (e) {
+                                    return `${match.date} a las ${match.time.substring(0, 5)} hs`;
+                                  }
                                 })()}
                               </span>
                               

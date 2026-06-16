@@ -23,8 +23,21 @@ export function MatchCard({ fixture, liveData, className, ...props }: MatchCardP
   const homeLogo = fixture.home.logo;
   const awayLogo = fixture.away.logo;
 
-  // Format time (HH:MM)
-  const formattedTime = fixture.time ? fixture.time.substring(0, 5) : 'TBD';
+  // Format time to Argentina timezone (UTC-3 / America/Argentina/Buenos_Aires)
+  let formattedTime = 'TBD';
+  if (fixture.date && fixture.time) {
+    try {
+      const utcDate = new Date(`${fixture.date}T${fixture.time.substring(0, 8)}Z`);
+      formattedTime = utcDate.toLocaleTimeString('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }) + ' hs';
+    } catch (e) {
+      formattedTime = fixture.time.substring(0, 5) + ' hs';
+    }
+  }
   
   // Status string
   let statusText = formattedTime;

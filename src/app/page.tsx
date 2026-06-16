@@ -73,10 +73,31 @@ export default function Home() {
   const visibleMatches = sortedMatches.slice(0, visibleMatchesCount);
   const hasMoreMatches = sortedMatches.length > visibleMatchesCount;
 
+  // Helper to get Argentina date string
+  const getArgentinaDateString = (dateStr: string, timeStr: string) => {
+    if (!dateStr || !timeStr) return dateStr || 'Fecha no disponible';
+    try {
+      const utcDate = new Date(`${dateStr}T${timeStr.substring(0, 8)}Z`);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      const parts = formatter.formatToParts(utcDate);
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   // Helper to format date headers (e.g. "11 JUN 2026")
   const formatDateHeader = (dateStr: string) => {
     try {
-      const date = new Date(`${dateStr}T00:00:00Z`);
+      const date = new Date(`${dateStr}T12:00:00Z`);
       const day = date.getUTCDate();
       const month = date.toLocaleDateString('es-AR', { month: 'short', timeZone: 'UTC' }).toUpperCase();
       const year = date.getUTCFullYear();
@@ -86,10 +107,10 @@ export default function Home() {
     }
   };
 
-  // Group visible matches by date string
+  // Group visible matches by Argentina local date string
   const groupedMatches: Record<string, Fixture[]> = {};
   visibleMatches.forEach(match => {
-    const dateKey = match.date || 'Fecha no disponible';
+    const dateKey = getArgentinaDateString(match.date, match.time);
     if (!groupedMatches[dateKey]) {
       groupedMatches[dateKey] = [];
     }
