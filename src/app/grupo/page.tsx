@@ -105,6 +105,10 @@ export default function GrupoPage() {
 
   // Companion Predictions State
   const [activeRightTab, setActiveRightTab] = useState<'bonus' | 'matches'>('bonus');
+  const [activeStage, setActiveStage] = useState<'groups' | 'knockouts'>('groups');
+  const [selectedGroup, setSelectedGroup] = useState<string>('A');
+  const [matchViewMode, setMatchViewMode] = useState<'finished' | 'by_group'>('finished');
+  const [showPendingMatches, setShowPendingMatches] = useState<boolean>(false);
   const [companionPredictions, setCompanionPredictions] = useState<Record<string, { homeScore: number | null; awayScore: number | null; points: number; isLocked: boolean }>>({});
   const [isLoadingPredictions, setIsLoadingPredictions] = useState<boolean>(false);
 
@@ -133,26 +137,94 @@ export default function GrupoPage() {
       });
   }, [selectedParticipantId]);
 
-  // Sort matches by date and time
-  const sortedMatches = useMemo(() => {
-    return [...allMatches].sort((a, b) => {
-      const timeA = new Date(`${a.date}T${a.time || '12:00:00'}Z`).getTime();
-      const timeB = new Date(`${b.date}T${b.time || '12:00:00'}Z`).getTime();
-      return timeA - timeB;
-    });
-  }, [allMatches]);
+  const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+
+  // Double Points Match Rule Helper
+  const isDoublePointsMatch = (match: any) => {
+    const isArgentina = match.home?.name === 'Argentina' || match.away?.name === 'Argentina';
+    return isArgentina;
+  };
 
   // Lock logic helper: predictions close 10 minutes before match start
-  const isMatchLocked = (match: any) => {
-    if (match.status === 'FINISHED') return true;
+  const getLockLimit = (matchDateStr: string, matchTimeStr: string) => {
     try {
-      const matchStart = new Date(`${match.date}T${match.time || '12:00:00'}Z`);
-      const limit = new Date(matchStart.getTime() - 10 * 60 * 1000);
-      return new Date() > limit;
+      const matchStart = new Date(`${matchDateStr}T${matchTimeStr || '12:00:00'}Z`);
+      return new Date(matchStart.getTime() - 10 * 60 * 1000);
     } catch (e) {
-      return true;
+      return new Date();
     }
   };
+
+  const isMatchLocked = (match: any) => {
+    if (match.status === 'FINISHED') return true;
+    const lockLimit = getLockLimit(match.date, match.time);
+    const now = new Date();
+    return now.getTime() > lockLimit.getTime();
+  };
+
+  const formatLockDate = (match: any) => {
+    const limit = getLockLimit(match.date, match.time);
+    return limit.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Argentina/Buenos_Aires'
+    }) + ' hs';
+  };
+
+  // Group Matches Filtered
+  const filteredMatches = useMemo(() => {
+    return allMatches.filter(m => {
+      const isLocked = isMatchLocked(m);
+      
+      // If we only show finished/locked matches:
+      if (matchViewMode === 'finished') {
+        return isLocked;
+      }
+      
+      // If matchViewMode === 'by_group'
+      const isKnockout = !(m.round || '').toLowerCase().includes('fecha') && !(m.round || '').toLowerCase().includes('matchday');
+      
+      let matchesFilters = false;
+      if (activeStage === 'groups') {
+        if (isKnockout) return false;
+        // Check group matching (supports Spanish and English)
+        const groupTermEs = `Grupo ${selectedGroup.toUpperCase()}`;
+        const groupTermEn = `Group ${selectedGroup.toUpperCase()}`;
+        const matchGroup = (m.group || '').toLowerCase();
+        const matchRound = (m.round || '').toLowerCase();
+        matchesFilters = matchGroup === groupTermEs.toLowerCase() || 
+                         matchGroup === groupTermEn.toLowerCase() || 
+                         matchRound.includes(groupTermEs.toLowerCase()) || 
+                         matchRound.includes(groupTermEn.toLowerCase());
+      } else {
+        matchesFilters = isKnockout;
+      }
+      
+      if (!matchesFilters) return false;
+      
+      // If we shouldn't show pending matches, only return locked ones
+      if (!showPendingMatches) {
+        return isLocked;
+      }
+      
+      return true;
+    });
+  }, [allMatches, matchViewMode, activeStage, selectedGroup, showPendingMatches]);
+
+  // Group matches by round for clean layout
+  const groupedMatchesByRound = useMemo(() => {
+    const groups: Record<string, typeof filteredMatches> = {};
+    filteredMatches.forEach(m => {
+      const roundName = m.round || 'Otros';
+      if (!groups[roundName]) {
+        groups[roundName] = [];
+      }
+      groups[roundName].push(m);
+    });
+    return groups;
+  }, [filteredMatches]);
 
   // Find currently selected participant object
   const selectedParticipant = useMemo(() => {
@@ -427,74 +499,268 @@ export default function GrupoPage() {
                     </div>
                   </div>
                 ) : (
-                  /* Matches predictions list */
-                  <div className="space-y-4">
+                  /* Matches predictions list with Stage and Group selector */
+                  <div className="space-y-6">
                     {isLoadingPredictions ? (
                       <div className="text-center py-8">
                         <div className="animate-spin h-6 w-6 border-2 border-[#B8860B] border-t-transparent mx-auto mb-2"></div>
                         <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Cargando Pronósticos...</p>
                       </div>
-                    ) : sortedMatches.length > 0 ? (
-                      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                        {sortedMatches.map(match => {
-                          const pred = companionPredictions[match.id];
-                          const isLocked = isMatchLocked(match);
-
-                          return (
-                            <div 
-                              key={match.id} 
-                              className="flex items-center justify-between p-3 bg-[#0B2545] border border-[#111111] text-xs"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 font-bold text-white uppercase truncate">
-                                  <span>{match.home.name}</span>
-                                  <span className="text-gray-400 font-normal">vs</span>
-                                  <span>{match.away.name}</span>
-                                </div>
-                                <span className="block text-[10px] text-gray-400 font-mono mt-0.5">
-                                  {match.round} | {match.date}
-                                </span>
-                              </div>
-
-                              <div className="text-right shrink-0 ml-3">
-                                {/* If match is not locked (we check locally as fallback or via API isLocked field), show hidden */}
-                                {!isLocked && !(pred && pred.isLocked) ? (
-                                  <span className="text-gray-400 flex items-center gap-1 bg-[#13315C] px-2 py-1 border border-gray-850 font-semibold uppercase text-[9px]">
-                                    <Lock size={10} className="text-[#B8860B]" /> Oculto
-                                  </span>
-                                ) : pred && (pred.homeScore !== null && pred.awayScore !== null) ? (
-                                  <div className="space-y-1">
-                                    <span className="font-mono text-sm font-bold text-white bg-[#13315C] px-2 py-1 border border-[#111111]">
-                                      {pred.homeScore} - {pred.awayScore}
-                                    </span>
-                                    {match.status === 'FINISHED' && (
-                                      <span className={cn(
-                                        "block text-[9px] font-bold uppercase",
-                                        pred.points > 0 ? "text-green-400" : "text-red-400"
-                                      )}>
-                                        {pred.points > 0 ? `+${pred.points} pts` : "0 pts"}
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <span className="font-mono text-sm font-bold text-gray-500 bg-[#13315C] px-2 py-1 border border-gray-850 italic">
-                                      0 - 0 (Auto)
-                                    </span>
-                                    {match.status === 'FINISHED' && (
-                                      <span className="block text-[9px] font-bold uppercase text-red-400">
-                                        0 pts
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
                     ) : (
-                      <p className="text-center text-xs text-gray-400 py-6">No hay partidos disponibles.</p>
+                      <div className="space-y-4">
+                        {/* VIEW MODE SELECTOR */}
+                        <div className="flex gap-2 bg-[#0B2545] p-2 border border-[#111111]">
+                          <button
+                            onClick={() => setMatchViewMode('finished')}
+                            className={cn(
+                              "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
+                              matchViewMode === 'finished'
+                                ? "bg-[#B8860B] text-[#111111]"
+                                : "bg-[#13315C] text-gray-300 hover:text-white"
+                            )}
+                          >
+                            Todos los Terminados
+                          </button>
+                          <button
+                            onClick={() => setMatchViewMode('by_group')}
+                            className={cn(
+                              "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
+                              matchViewMode === 'by_group'
+                                ? "bg-[#B8860B] text-[#111111]"
+                                : "bg-[#13315C] text-gray-300 hover:text-white"
+                            )}
+                          >
+                            Ver por Grupo / Fase
+                          </button>
+                        </div>
+
+                        {/* STAGE & GROUP SELECTORS (only shown when in 'by_group' mode) */}
+                        {matchViewMode === 'by_group' && (
+                          <div className="space-y-3 p-2 bg-[#0B2545] border border-[#111111]">
+                            {/* STAGE SELECTOR */}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setActiveStage('groups')}
+                                className={cn(
+                                  "flex-1 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors",
+                                  activeStage === 'groups'
+                                    ? "bg-[#B8860B] text-[#111111]"
+                                    : "bg-[#13315C] text-gray-300 hover:text-white"
+                                )}
+                              >
+                                Fase de Grupos
+                              </button>
+                              <button
+                                onClick={() => setActiveStage('knockouts')}
+                                className={cn(
+                                  "flex-1 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors",
+                                  activeStage === 'knockouts'
+                                    ? "bg-[#B8860B] text-[#111111]"
+                                    : "bg-[#13315C] text-gray-300 hover:text-white"
+                                )}
+                              >
+                                Fase Eliminatoria
+                              </button>
+                            </div>
+
+                            {/* GROUP SELECTOR */}
+                            {activeStage === 'groups' && (
+                              <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto pt-1">
+                                {GROUPS.map(g => (
+                                  <button
+                                    key={g}
+                                    onClick={() => setSelectedGroup(g)}
+                                    className={cn(
+                                      "px-1.5 py-0.5 text-[9px] font-bold uppercase border transition-all",
+                                      selectedGroup === g
+                                        ? "bg-[#111111] border-[#111111] text-white"
+                                        : "bg-[#13315C] border-[#111111] text-gray-400 hover:text-white"
+                                    )}
+                                  >
+                                    G{g}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* PENDING TOGGLE */}
+                            <div className="flex items-center gap-2 pt-1.5 border-t border-[#13315C]">
+                              <input
+                                type="checkbox"
+                                id="show-pending-checkbox"
+                                checked={showPendingMatches}
+                                onChange={(e) => setShowPendingMatches(e.target.checked)}
+                                className="w-3.5 h-3.5 accent-[#B8860B] cursor-pointer"
+                              />
+                              <label htmlFor="show-pending-checkbox" className="text-[10px] text-gray-400 font-bold uppercase select-none cursor-pointer">
+                                Mostrar partidos pendientes (Abiertos)
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* KNOCKOUT RULE WARNING */}
+                        {matchViewMode === 'by_group' && activeStage === 'knockouts' && (
+                          <div className="bg-amber-950/30 border border-[#B8860B] p-3 text-[10px] font-inter text-amber-200">
+                            <strong>Regla de 120 Minutos:</strong> Se toma el resultado suplementario (sin penales).
+                          </div>
+                        )}
+
+                        {/* MATCHES LIST */}
+                        <div className="space-y-6 max-h-[500px] overflow-y-auto pr-1">
+                          {Object.keys(groupedMatchesByRound).length > 0 ? (
+                            Object.keys(groupedMatchesByRound).map(roundName => (
+                              <div key={roundName} className="space-y-3">
+                                <h4 className="text-xs font-bold text-[#B8860B] uppercase tracking-widest border-b border-gray-700 pb-1 flex justify-between items-center">
+                                  <span>{roundName}</span>
+                                  {matchViewMode === 'by_group' && activeStage === 'groups' && (
+                                    <span className="text-[10px] text-gray-400 font-mono">Grupo {selectedGroup}</span>
+                                  )}
+                                </h4>
+
+                                <div className="space-y-4">
+                                  {groupedMatchesByRound[roundName].map(match => {
+                                    const pred = companionPredictions[match.id];
+                                    const isSelf = selectedParticipant?.isCurrentUser;
+                                    const isLocked = pred ? pred.isLocked : isMatchLocked(match);
+                                    const isDouble = isDoublePointsMatch(match);
+
+                                    return (
+                                      <div 
+                                        key={match.id}
+                                        className={cn(
+                                          "border-2 bg-[#0B2545] p-4 shadow-[4px_4px_0px_0px_#111111] transition-all relative text-xs",
+                                          isDouble ? "border-[#B8860B] shadow-[4px_4px_0px_0px_#B8860B]/20" : "border-[#111111]"
+                                        )}
+                                      >
+                                        {/* Badges bar */}
+                                        <div className="flex justify-between items-center mb-2.5 text-[9px] font-bold font-mono text-gray-400">
+                                          <span className="uppercase truncate max-w-[150px]">{match.location}</span>
+                                          <div className="flex gap-1 items-center">
+                                            {isDouble && (
+                                              <span className="bg-[#B8860B] text-[#111111] px-1 py-0.5 font-sans tracking-wide">
+                                                ★ DOBLE
+                                              </span>
+                                            )}
+                                            {isLocked ? (
+                                              <span className="text-red-400 flex items-center gap-0.5 bg-red-950/40 px-1 py-0.5 border border-red-900/50">
+                                                <Lock size={8} /> Cerrado
+                                              </span>
+                                            ) : (
+                                              <span className="text-green-400 flex items-center gap-0.5 bg-green-950/20 px-1 py-0.5 border border-green-900/50">
+                                                <Unlock size={8} /> Abierto
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* Main row with teams and predictions */}
+                                        <div className="flex items-center justify-between gap-2 py-1">
+                                          {/* Home Team */}
+                                          <div className="flex-1 flex items-center gap-2 justify-end text-right min-w-0">
+                                            <span className="text-[11px] font-bold uppercase tracking-wide truncate">
+                                              {match.home.name}
+                                            </span>
+                                            <div className="h-6 w-6 bg-[#13315C] border border-gray-700 flex items-center justify-center font-mono font-bold text-[10px] text-gray-400 shrink-0">
+                                              {match.home.name.substring(0, 3).toUpperCase()}
+                                            </div>
+                                          </div>
+
+                                          {/* Predicted Score or Locked Badge */}
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            {isLocked || isSelf ? (
+                                              pred && (pred.homeScore !== null && pred.awayScore !== null) ? (
+                                                <>
+                                                  <div className="w-8 h-8 flex items-center justify-center border-2 border-[#111111] bg-[#13315C] text-white font-bold text-sm">
+                                                    {pred.homeScore}
+                                                  </div>
+                                                  <span className="text-gray-400 font-bold">:</span>
+                                                  <div className="w-8 h-8 flex items-center justify-center border-2 border-[#111111] bg-[#13315C] text-white font-bold text-sm">
+                                                    {pred.awayScore}
+                                                  </div>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <div className="w-8 h-8 flex items-center justify-center border border-gray-800 bg-[#13315C] text-gray-500 font-bold text-sm italic">
+                                                    -
+                                                  </div>
+                                                  <span className="text-gray-500 font-bold">:</span>
+                                                  <div className="w-8 h-8 flex items-center justify-center border border-gray-800 bg-[#13315C] text-gray-500 font-bold text-sm italic">
+                                                    -
+                                                  </div>
+                                                </>
+                                              )
+                                            ) : (
+                                              <span className="text-gray-400 flex items-center gap-1 bg-[#13315C] px-2 py-1 border border-gray-850 font-semibold uppercase text-[9px]">
+                                                <Lock size={10} className="text-[#B8860B]" /> Oculto
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Away Team */}
+                                          <div className="flex-1 flex items-center gap-2 justify-start text-left min-w-0">
+                                            <div className="h-6 w-6 bg-[#13315C] border border-gray-700 flex items-center justify-center font-mono font-bold text-[10px] text-gray-400 shrink-0">
+                                              {match.away.name.substring(0, 3).toUpperCase()}
+                                            </div>
+                                            <span className="text-[11px] font-bold uppercase tracking-wide truncate">
+                                              {match.away.name}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Subtitle details */}
+                                        <div className="mt-2.5 pt-2 border-t border-[#13315C] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 text-[10px]">
+                                          <span className="text-gray-400 font-mono">
+                                            {(() => {
+                                              try {
+                                                const utcDate = new Date(`${match.date}T${match.time.substring(0, 8)}Z`);
+                                                return utcDate.toLocaleDateString('es-AR', {
+                                                  timeZone: 'America/Argentina/Buenos_Aires',
+                                                  day: '2-digit',
+                                                  month: '2-digit',
+                                                }) + ' ' + utcDate.toLocaleTimeString('es-AR', {
+                                                  timeZone: 'America/Argentina/Buenos_Aires',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                  hour12: false
+                                                }) + ' hs';
+                                              } catch (e) {
+                                                return `${match.date} ${match.time.substring(0, 5)} hs`;
+                                              }
+                                            })()}
+                                          </span>
+
+                                          {!isLocked && (
+                                            <span className="text-gray-400 text-[9px] font-mono">
+                                              Límite: {formatLockDate(match)}
+                                            </span>
+                                          )}
+
+                                          {/* Official Result & points */}
+                                          {match.status === 'FINISHED' && match.homeScore !== null && match.awayScore !== null && (
+                                            <div className="flex gap-1.5 items-center bg-[#13315C] px-2 py-0.5 border border-gray-750 font-mono text-[9px] mt-1 sm:mt-0">
+                                              <span className="text-gray-400">Real:</span>
+                                              <span className="text-[#B8860B] font-bold">{match.homeScore} - {match.awayScore}</span>
+                                              <span className={cn(
+                                                "font-bold uppercase px-0.5",
+                                                pred && pred.points > 0 ? "text-green-400" : "text-red-400"
+                                              )}>
+                                                {pred && pred.points > 0 ? `+${pred.points} pts` : "0 pts"}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-center text-xs text-gray-400 py-6">No hay partidos para mostrar.</p>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
