@@ -267,7 +267,7 @@ export default function ReglamentoPage() {
                 CAMPEÓN
               </div>
               <div className="pt-6 space-y-4">
-                <span className={cn("text-5xl text-[#B8860B] font-bold block", theme.typography.numbers)}>10 PTS</span>
+                <span className={cn("text-5xl text-[#B8860B] font-bold block", theme.typography.numbers)}>15 PTS</span>
                 <div>
                   <h3 className="text-lg font-bold uppercase tracking-wider mb-2">Campeón del Mundo</h3>
                   <p className="text-gray-300 text-sm font-inter">
@@ -283,7 +283,7 @@ export default function ReglamentoPage() {
                 SUBCAMPEÓN
               </div>
               <div className="pt-6 space-y-4">
-                <span className={cn("text-5xl text-gray-300 font-bold block", theme.typography.numbers)}>5 PTS</span>
+                <span className={cn("text-5xl text-gray-300 font-bold block", theme.typography.numbers)}>10 PTS</span>
                 <div>
                   <h3 className="text-lg font-bold uppercase tracking-wider mb-2">Subcampeón del Mundo</h3>
                   <p className="text-gray-300 text-sm font-inter">
@@ -299,7 +299,7 @@ export default function ReglamentoPage() {
                 GOLEADOR
               </div>
               <div className="pt-6 space-y-4">
-                <span className={cn("text-5xl text-amber-500 font-bold block", theme.typography.numbers)}>5 PTS</span>
+                <span className={cn("text-5xl text-amber-500 font-bold block", theme.typography.numbers)}>10 PTS</span>
                 <div>
                   <h3 className="text-lg font-bold uppercase tracking-wider mb-2">Máximo Goleador (Bota de Oro)</h3>
                   <p className="text-gray-300 text-sm font-inter">

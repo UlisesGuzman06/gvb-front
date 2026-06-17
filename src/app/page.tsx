@@ -459,7 +459,7 @@ export default function Home() {
                   <span className={cn("text-2xl text-[#B8860B] shrink-0", theme.typography.numbers)}>03</span>
                   <div>
                     <h4 className="text-lg font-bold uppercase tracking-wide">Bonus Especiales</h4>
-                    <p className="text-[#F4F1EA] opacity-80 mt-1">Acertar el campeón suma <strong className="text-white opacity-100">10 puntos</strong>. Subcampeón y goleador suman <strong className="text-white opacity-100">5 puntos</strong> cada uno.</p>
+                    <p className="text-[#F4F1EA] opacity-80 mt-1">Acertar el campeón suma <strong className="text-white opacity-100">15 puntos</strong>. Subcampeón, goleador y demás categorías especiales suman <strong className="text-white opacity-100">10 puntos</strong> cada uno.</p>
                   </div>
                 </li>
               </ul>

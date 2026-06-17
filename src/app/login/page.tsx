@@ -457,14 +457,14 @@ export default function LoginPage() {
 
                     <div className="space-y-4">
                       <SelectField
-                        label="Campeón del Mundo (+10 pts)"
+                        label="Campeón del Mundo (+15 pts)"
                         value={champion}
                         onChange={(v) => { setChampion(v); if (v === subchampion) setSubchampion(''); }}
                         icon={<Trophy size={16} />}
                       />
 
                       <SelectField
-                        label="Subcampeón (+5 pts)"
+                        label="Subcampeón (+10 pts)"
                         value={subchampion}
                         onChange={setSubchampion}
                         icon={<Trophy size={16} />}
@@ -473,7 +473,7 @@ export default function LoginPage() {
 
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-[#B8860B] mb-2">
-                          Goleador / Bota de Oro (+5 pts)
+                          Goleador / Bota de Oro (+10 pts)
                         </label>
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
@@ -494,7 +494,7 @@ export default function LoginPage() {
 
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-[#B8860B] mb-2">
-                          Balón de Oro / Mejor Jugador (+5 pts)
+                          Balón de Oro / Mejor Jugador (+10 pts)
                         </label>
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
@@ -515,7 +515,7 @@ export default function LoginPage() {
 
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-[#B8860B] mb-2">
-                          Guante de Oro / Mejor Arquero (+5 pts)
+                          Guante de Oro / Mejor Arquero (+10 pts)
                         </label>
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">

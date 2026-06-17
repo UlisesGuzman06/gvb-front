@@ -16,7 +16,10 @@ import {
   ChevronRight, 
   Tv, 
   Zap,
-  Target
+  Target,
+  Lock,
+  Unlock,
+  Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import API_URL from '@/config/api';
@@ -99,6 +102,57 @@ export default function GrupoPage() {
       setSelectedParticipantId(current ? current.id : participantsList[0].id);
     }
   }, [participantsList, selectedParticipantId]);
+
+  // Companion Predictions State
+  const [activeRightTab, setActiveRightTab] = useState<'bonus' | 'matches'>('bonus');
+  const [companionPredictions, setCompanionPredictions] = useState<Record<string, { homeScore: number | null; awayScore: number | null; points: number; isLocked: boolean }>>({});
+  const [isLoadingPredictions, setIsLoadingPredictions] = useState<boolean>(false);
+
+  // Load companion predictions
+  useEffect(() => {
+    if (!selectedParticipantId) return;
+
+    const token = localStorage.getItem('gvb_token');
+    if (!token) return;
+
+    setIsLoadingPredictions(true);
+    fetch(`${API_URL}/predictions/companion/${selectedParticipantId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load companion predictions');
+        return res.json();
+      })
+      .then(data => {
+        setCompanionPredictions(data);
+        setIsLoadingPredictions(false);
+      })
+      .catch(err => {
+        console.error('Error loading companion predictions:', err);
+        setIsLoadingPredictions(false);
+      });
+  }, [selectedParticipantId]);
+
+  // Sort matches by date and time
+  const sortedMatches = useMemo(() => {
+    return [...allMatches].sort((a, b) => {
+      const timeA = new Date(`${a.date}T${a.time || '12:00:00'}Z`).getTime();
+      const timeB = new Date(`${b.date}T${b.time || '12:00:00'}Z`).getTime();
+      return timeA - timeB;
+    });
+  }, [allMatches]);
+
+  // Lock logic helper: predictions close 10 minutes before match start
+  const isMatchLocked = (match: any) => {
+    if (match.status === 'FINISHED') return true;
+    try {
+      const matchStart = new Date(`${match.date}T${match.time || '12:00:00'}Z`);
+      const limit = new Date(matchStart.getTime() - 10 * 60 * 1000);
+      return new Date() > limit;
+    } catch (e) {
+      return true;
+    }
+  };
 
   // Find currently selected participant object
   const selectedParticipant = useMemo(() => {
@@ -238,9 +292,11 @@ export default function GrupoPage() {
           <div className="lg:col-span-5 space-y-4">
             <div className="flex justify-between items-end border-b border-[#13315C] pb-3">
               <h2 className={cn("text-2xl uppercase tracking-wider text-white", theme.typography.heading)}>
-                Predicciones Especiales
+                {activeRightTab === 'bonus' ? 'Predicciones Especiales' : 'Pronósticos de Partidos'}
               </h2>
-              <span className="text-xs font-bold font-mono text-[#B8860B]">VER BONUS</span>
+              <span className="text-xs font-bold font-mono text-[#B8860B]">
+                {activeRightTab === 'bonus' ? 'VER BONUS' : 'VER PARTIDOS'}
+              </span>
             </div>
 
             {selectedParticipant ? (
@@ -260,98 +316,195 @@ export default function GrupoPage() {
                   </div>
                 </div>
 
-                {/* Grid of Bonus predictions */}
-                <div className="space-y-4 font-inter">
-                  
-                  {/* Champion */}
-                  <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
-                    <div className="p-2 bg-[#13315C] border border-[#B8860B] text-[#B8860B] shrink-0">
-                      <Trophy size={18} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
-                        Campeón del Mundo (+10 pts)
-                      </span>
-                      <span className="text-sm font-bold text-white uppercase block mt-0.5">
-                        {selectedParticipant.bonus.champion}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Subchampion */}
-                  <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
-                    <div className="p-2 bg-[#13315C] border border-gray-600 text-gray-300 shrink-0">
-                      <Award size={18} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
-                        Subcampeón del Mundo (+5 pts)
-                      </span>
-                      <span className="text-sm font-bold text-white uppercase block mt-0.5">
-                        {selectedParticipant.bonus.subchampion}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Golden Boot */}
-                  <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
-                    <div className="p-2 bg-[#13315C] border border-amber-800 text-amber-500 shrink-0">
-                      <Target size={18} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
-                        Bota de Oro / Goleador (+5 pts)
-                      </span>
-                      <span className="text-sm font-bold text-white uppercase block mt-0.5">
-                        {selectedParticipant.bonus.topScorer}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Golden Ball */}
-                  <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
-                    <div className="p-2 bg-[#13315C] border border-[#B8860B] text-[#B8860B] shrink-0">
-                      <Sparkles size={18} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
-                        Balón de Oro / Mejor Jugador (+5 pts)
-                      </span>
-                      <span className="text-sm font-bold text-white uppercase block mt-0.5">
-                        {selectedParticipant.bonus.goldenBall}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Golden Glove */}
-                  <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
-                    <div className="p-2 bg-[#13315C] border border-blue-900 text-blue-400 shrink-0">
-                      <Shield size={18} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
-                        Guante de Oro / Mejor Arquero (+5 pts)
-                      </span>
-                      <span className="text-sm font-bold text-white uppercase block mt-0.5">
-                        {selectedParticipant.bonus.goldenGlove}
-                      </span>
-                    </div>
-                  </div>
-
+                {/* Tabs inside sidebar */}
+                <div className="flex border-b border-[#111111] mb-4 gap-2">
+                  <button
+                    onClick={() => setActiveRightTab('bonus')}
+                    className={cn(
+                      "flex-1 py-2 text-xs font-bold uppercase tracking-wider border-t border-x border-[#111111] -mb-px transition-colors",
+                      activeRightTab === 'bonus'
+                        ? "bg-[#0B2545] border-b-2 border-b-[#0B2545] text-[#B8860B]"
+                        : "bg-[#13315C] border-transparent text-gray-400 hover:text-white"
+                    )}
+                  >
+                    Especiales (Bonus)
+                  </button>
+                  <button
+                    onClick={() => setActiveRightTab('matches')}
+                    className={cn(
+                      "flex-1 py-2 text-xs font-bold uppercase tracking-wider border-t border-x border-[#111111] -mb-px transition-colors",
+                      activeRightTab === 'matches'
+                        ? "bg-[#0B2545] border-b-2 border-b-[#0B2545] text-[#B8860B]"
+                        : "bg-[#13315C] border-transparent text-gray-400 hover:text-white"
+                    )}
+                  >
+                    Pronósticos de Partidos
+                  </button>
                 </div>
 
-                {/* Footer note */}
-                <div className="bg-[#0B2545] p-3 border border-gray-800 text-[10px] text-gray-400 font-inter text-center">
-                  * Las predicciones se bloquearon al iniciar el torneo el 11/06/2026.
-                </div>
+                {activeRightTab === 'bonus' ? (
+                  /* Grid of Bonus predictions */
+                  <div className="space-y-4 font-inter">
+                    
+                    {/* Champion */}
+                    <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
+                      <div className="p-2 bg-[#13315C] border border-[#B8860B] text-[#B8860B] shrink-0">
+                        <Trophy size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
+                          Campeón del Mundo (+15 pts)
+                        </span>
+                        <span className="text-sm font-bold text-white uppercase block mt-0.5">
+                          {selectedParticipant.bonus.champion}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Subchampion */}
+                    <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
+                      <div className="p-2 bg-[#13315C] border border-gray-600 text-gray-300 shrink-0">
+                        <Award size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
+                          Subcampeón del Mundo (+10 pts)
+                        </span>
+                        <span className="text-sm font-bold text-white uppercase block mt-0.5">
+                          {selectedParticipant.bonus.subchampion}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Golden Boot */}
+                    <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
+                      <div className="p-2 bg-[#13315C] border border-amber-800 text-amber-500 shrink-0">
+                        <Target size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
+                          Bota de Oro / Goleador (+10 pts)
+                        </span>
+                        <span className="text-sm font-bold text-white uppercase block mt-0.5">
+                          {selectedParticipant.bonus.topScorer}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Golden Ball */}
+                    <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
+                      <div className="p-2 bg-[#13315C] border border-[#B8860B] text-[#B8860B] shrink-0">
+                        <Sparkles size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
+                          Balón de Oro / Mejor Jugador (+10 pts)
+                        </span>
+                        <span className="text-sm font-bold text-white uppercase block mt-0.5">
+                          {selectedParticipant.bonus.goldenBall}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Golden Glove */}
+                    <div className="flex items-start gap-3 bg-[#0B2545] p-3 border border-[#111111]">
+                      <div className="p-2 bg-[#13315C] border border-blue-900 text-blue-400 shrink-0">
+                        <Shield size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-mono font-bold block uppercase tracking-wider">
+                          Guante de Oro / Mejor Arquero (+10 pts)
+                        </span>
+                        <span className="text-sm font-bold text-white uppercase block mt-0.5">
+                          {selectedParticipant.bonus.goldenGlove}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Footer note */}
+                    <div className="bg-[#0B2545] p-3 border border-gray-800 text-[10px] text-gray-400 font-inter text-center mt-6">
+                      * Las predicciones se bloquearon al iniciar el torneo el 11/06/2026.
+                    </div>
+                  </div>
+                ) : (
+                  /* Matches predictions list */
+                  <div className="space-y-4">
+                    {isLoadingPredictions ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin h-6 w-6 border-2 border-[#B8860B] border-t-transparent mx-auto mb-2"></div>
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Cargando Pronósticos...</p>
+                      </div>
+                    ) : sortedMatches.length > 0 ? (
+                      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                        {sortedMatches.map(match => {
+                          const pred = companionPredictions[match.id];
+                          const isLocked = isMatchLocked(match);
+
+                          return (
+                            <div 
+                              key={match.id} 
+                              className="flex items-center justify-between p-3 bg-[#0B2545] border border-[#111111] text-xs"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 font-bold text-white uppercase truncate">
+                                  <span>{match.home.name}</span>
+                                  <span className="text-gray-400 font-normal">vs</span>
+                                  <span>{match.away.name}</span>
+                                </div>
+                                <span className="block text-[10px] text-gray-400 font-mono mt-0.5">
+                                  {match.round} | {match.date}
+                                </span>
+                              </div>
+
+                              <div className="text-right shrink-0 ml-3">
+                                {/* If match is not locked (we check locally as fallback or via API isLocked field), show hidden */}
+                                {!isLocked && !(pred && pred.isLocked) ? (
+                                  <span className="text-gray-400 flex items-center gap-1 bg-[#13315C] px-2 py-1 border border-gray-850 font-semibold uppercase text-[9px]">
+                                    <Lock size={10} className="text-[#B8860B]" /> Oculto
+                                  </span>
+                                ) : pred && (pred.homeScore !== null && pred.awayScore !== null) ? (
+                                  <div className="space-y-1">
+                                    <span className="font-mono text-sm font-bold text-white bg-[#13315C] px-2 py-1 border border-[#111111]">
+                                      {pred.homeScore} - {pred.awayScore}
+                                    </span>
+                                    {match.status === 'FINISHED' && (
+                                      <span className={cn(
+                                        "block text-[9px] font-bold uppercase",
+                                        pred.points > 0 ? "text-green-400" : "text-red-400"
+                                      )}>
+                                        {pred.points > 0 ? `+${pred.points} pts` : "0 pts"}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <span className="font-mono text-sm font-bold text-gray-500 bg-[#13315C] px-2 py-1 border border-gray-850 italic">
+                                      0 - 0 (Auto)
+                                    </span>
+                                    {match.status === 'FINISHED' && (
+                                      <span className="block text-[9px] font-bold uppercase text-red-400">
+                                        0 pts
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-center text-xs text-gray-400 py-6">No hay partidos disponibles.</p>
+                    )}
+                  </div>
+                )}
 
               </div>
             ) : (
               <div className="bg-[#13315C] border border-[#111111] p-8 text-center text-gray-400 shadow-[6px_6px_0px_0px_rgba(17,17,17,1)]">
-                Selecciona un participante de la tabla para ver sus predicciones de Bonus.
+                Selecciona un participante de la tabla para ver sus predicciones.
               </div>
             )}
-
           </div>
 
         </div>

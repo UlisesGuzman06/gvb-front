@@ -17,7 +17,8 @@ import {
   Save, 
   LogOut, 
   Award,
-  HelpCircle
+  HelpCircle,
+  Zap
 } from 'lucide-react';
 import API_URL from '@/config/api';
 
@@ -128,6 +129,29 @@ export default function ProdePage() {
       }
     });
     return Array.from(teams).sort();
+  }, [allMatches]);
+
+  const getArgentinaTodayString = () => {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      const parts = formatter.formatToParts(new Date());
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return new Date().toISOString().split('T')[0];
+    }
+  };
+
+  const todayMatches = useMemo(() => {
+    const todayStr = getArgentinaTodayString();
+    return allMatches.filter(m => m.date === todayStr);
   }, [allMatches]);
 
   // Lock logic helper: predictions close 10 minutes before match start
@@ -488,6 +512,170 @@ export default function ProdePage() {
               </button>
             </div>
 
+            {/* TODAY'S MATCHES SECTION */}
+            {todayMatches.length > 0 && (
+              <div className="space-y-4 bg-[#111111]/30 p-6 border-2 border-[#B8860B] shadow-[4px_4px_0px_0px_rgba(184,134,11,0.1)]">
+                <h3 className="text-lg font-bold text-[#B8860B] uppercase tracking-widest flex items-center gap-2">
+                  <Zap size={18} className="animate-pulse" /> Partidos de Hoy
+                </h3>
+                <p className="text-xs text-gray-400 font-inter -mt-2">
+                  Pronósticos rápidos para los partidos del día de la fecha.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {todayMatches.map(match => {
+                    const pred = predictions[match.id] || { homeScore: '', awayScore: '' };
+                    const isLocked = isMatchLocked(match);
+                    const isDouble = isDoublePointsMatch(match);
+                    const realResult = (match.status === 'FINISHED' && match.homeScore !== null && match.awayScore !== null ? { home: match.homeScore as number, away: match.awayScore as number } : null);
+
+                    return (
+                      <div 
+                        key={`today-${match.id}`}
+                        className={cn(
+                          "border-2 bg-[#13315C] p-5 shadow-[4px_4px_0px_0px_#111111] transition-all relative",
+                          isDouble ? "border-[#B8860B] shadow-[4px_4px_0px_0px_#B8860B]/30" : "border-[#111111]"
+                        )}
+                      >
+                        {/* Badges bar */}
+                        <div className="flex justify-between items-center mb-3 text-[10px] font-bold font-mono text-gray-400">
+                          <span className="uppercase">{match.location}</span>
+                          <div className="flex gap-1.5 items-center">
+                            {isDouble && (
+                              <span className="bg-[#B8860B] text-[#111111] px-1.5 py-0.5 font-sans tracking-wide">
+                                ★ PUNTAJE DOBLE
+                              </span>
+                            )}
+                            {isLocked ? (
+                              <span className="text-red-400 flex items-center gap-0.5 bg-red-950/40 px-1.5 py-0.5 border border-red-900/50">
+                                    <Lock size={10} /> Cerrado
+                                  </span>
+                                ) : (
+                                  <span className="text-green-400 flex items-center gap-0.5 bg-green-950/20 px-1.5 py-0.5 border border-green-900/50">
+                                    <Unlock size={10} /> Abierto
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Main row with teams and inputs */}
+                            <div className="flex items-center justify-between gap-4 py-2">
+                              {/* Home Team */}
+                              <div className="flex-1 flex items-center gap-3 justify-end text-right">
+                                <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
+                                  {match.home.name}
+                                </span>
+                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0">
+                                  {match.home.name.substring(0, 3).toUpperCase()}
+                                </div>
+                              </div>
+
+                              {/* Prediction Inputs */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <input
+                                  type="text"
+                                  value={pred.homeScore}
+                                  disabled={isLocked}
+                                  onChange={(e) => handleScoreChange(match.id, 'homeScore', e.target.value)}
+                                  className={cn(
+                                    "w-10 h-10 text-center border-2 border-[#111111] bg-[#0B2545] text-white font-bold text-lg focus-visible:border-[#B8860B]",
+                                    isLocked && "opacity-75 cursor-not-allowed bg-gray-900 text-gray-400 border-gray-800"
+                                  )}
+                                  aria-label={`Pronóstico goles local hoy ${match.home.name}`}
+                                />
+                                <span className="text-gray-400 font-bold">:</span>
+                                <input
+                                  type="text"
+                                  value={pred.awayScore}
+                                  disabled={isLocked}
+                                  onChange={(e) => handleScoreChange(match.id, 'awayScore', e.target.value)}
+                                  className={cn(
+                                    "w-10 h-10 text-center border-2 border-[#111111] bg-[#0B2545] text-white font-bold text-lg focus-visible:border-[#B8860B]",
+                                    isLocked && "opacity-75 cursor-not-allowed bg-gray-900 text-gray-400 border-gray-800"
+                                  )}
+                                  aria-label={`Pronóstico goles visitante hoy ${match.away.name}`}
+                                />
+                              </div>
+
+                              {/* Away Team */}
+                              <div className="flex-1 flex items-center gap-3 justify-start text-left">
+                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0">
+                                  {match.away.name.substring(0, 3).toUpperCase()}
+                                </div>
+                                <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
+                                  {match.away.name}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Subtitle details (Date, Time, lock warning) */}
+                            <div className="mt-3 pt-3 border-t border-[#0B2545] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                              <span className="text-gray-400 font-mono">
+                                {(() => {
+                                  try {
+                                    const utcDate = new Date(`${match.date}T${match.time.substring(0, 8)}Z`);
+                                    return utcDate.toLocaleDateString('es-AR', {
+                                      timeZone: 'America/Argentina/Buenos_Aires',
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric'
+                                    }) + ' a las ' + utcDate.toLocaleTimeString('es-AR', {
+                                      timeZone: 'America/Argentina/Buenos_Aires',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false
+                                    }) + ' hs';
+                                  } catch (e) {
+                                    return `${match.date} a las ${match.time.substring(0, 5)} hs`;
+                                  }
+                                })()}
+                              </span>
+                              
+                              {!isLocked && (
+                                <span className="text-gray-400 text-[10px] font-mono">
+                                  Límite: {formatLockDate(match)}
+                                </span>
+                              )}
+
+                              {/* Official / Simulated Result display */}
+                              {realResult && (
+                                <div className="flex gap-2 items-center bg-[#0B2545] px-2.5 py-1 border border-gray-700 font-mono text-[10px]">
+                                  <span className="text-gray-400">
+                                    Resultado Oficial:
+                                  </span>
+                                  <span className="text-[#B8860B] font-bold">{realResult.home} - {realResult.away}</span>
+                                  
+                                  {/* Point tag */}
+                                  {pred.homeScore !== '' && pred.awayScore !== '' && (
+                                    <span className={cn(
+                                      "font-bold uppercase px-1",
+                                      pred.homeScore === realResult.home && pred.awayScore === realResult.away 
+                                        ? "text-green-400" 
+                                        : (
+                                          (pred.homeScore > pred.awayScore && realResult.home > realResult.away) ||
+                                          (pred.homeScore < pred.awayScore && realResult.home < realResult.away) ||
+                                          (pred.homeScore === pred.awayScore && realResult.home === realResult.away)
+                                        ) ? "text-blue-400" : "text-red-400"
+                                    )}>
+                                      {pred.homeScore === realResult.home && pred.awayScore === realResult.away 
+                                        ? `+${3 * (isDouble ? 2 : 1)} pts` 
+                                        : (
+                                          (pred.homeScore > pred.awayScore && realResult.home > realResult.away) ||
+                                          (pred.homeScore < pred.awayScore && realResult.home < realResult.away) ||
+                                          (pred.homeScore === pred.awayScore && realResult.home === realResult.away)
+                                        ) ? `+${1 * (isDouble ? 2 : 1)} pt` : "0 pts"
+                                      }
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* IF STAGE === GROUPS, SHOW GROUP SELECTOR */}
             {activeStage === 'groups' && (
               <div className="flex flex-wrap gap-1.5 bg-[#13315C]/40 p-3 border border-[#13315C]">
@@ -713,11 +901,11 @@ export default function ProdePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {[
-                { label: 'Campeón del Mundo', value: bonus.champion, icon: '🏆', pts: '+10 PTS' },
-                { label: 'Subcampeón del Mundo', value: bonus.subchampion, icon: '🥈', pts: '+5 PTS' },
-                { label: 'Máximo Goleador (Bota de Oro)', value: bonus.topScorer, icon: '⚽', pts: '+5 PTS' },
-                { label: 'Balón de Oro (Mejor Jugador)', value: bonus.goldenBall, icon: '✨', pts: '+5 PTS' },
-                { label: 'Guante de Oro (Mejor Arquero)', value: bonus.goldenGlove, icon: '🧤', pts: '+5 PTS' },
+                { label: 'Campeón del Mundo', value: bonus.champion, icon: '🏆', pts: '+15 PTS' },
+                { label: 'Subcampeón del Mundo', value: bonus.subchampion, icon: '🥈', pts: '+10 PTS' },
+                { label: 'Máximo Goleador (Bota de Oro)', value: bonus.topScorer, icon: '⚽', pts: '+10 PTS' },
+                { label: 'Balón de Oro (Mejor Jugador)', value: bonus.goldenBall, icon: '✨', pts: '+10 PTS' },
+                { label: 'Guante de Oro (Mejor Arquero)', value: bonus.goldenGlove, icon: '🧤', pts: '+10 PTS' },
               ].map(({ label, value, icon, pts }) => (
                 <div
                   key={label}
