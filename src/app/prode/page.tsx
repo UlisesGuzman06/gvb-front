@@ -16,8 +16,6 @@ import {
   AlertCircle, 
   Save, 
   LogOut, 
-  Award,
-  HelpCircle,
   Zap,
   Users,
   X
@@ -44,7 +42,7 @@ export default function ProdePage() {
   const { data: allMatches = [], isLoading: isLoadingMatches } = useMatches();
 
   // Navigation Tabs
-  const [activeMainTab, setActiveMainTab] = useState<'fixtures' | 'bonus' | 'dashboard'>('fixtures');
+  const [activeMainTab, setActiveMainTab] = useState<'fixtures' | 'bonus'>('fixtures');
   const [activeStage, setActiveStage] = useState<'groups' | 'knockouts'>('groups');
   const [selectedGroup, setSelectedGroup] = useState<string>('A');
 
@@ -334,58 +332,7 @@ export default function ProdePage() {
     return groups;
   }, [filteredMatches]);
 
-  // Points Calculation for Profile Dashboard
-  const pointsSummary = useMemo(() => {
-    let totalPoints = 0;
-    let exactHits = 0;
-    let trendHits = 0;
-    let errors = 0;
-    let matchesEvaluated = 0;
 
-    allMatches.forEach(m => {
-      const pred = predictions[m.id];
-      const hasPred = pred && pred.homeScore !== '' && pred.awayScore !== '';
-      const realResult = (m.status === 'FINISHED' && m.homeScore !== null && m.awayScore !== null ? { home: m.homeScore as number, away: m.awayScore as number } : null);
-      
-      if (hasPred && realResult) {
-        matchesEvaluated++;
-        const pHome = Number(pred.homeScore);
-        const pAway = Number(pred.awayScore);
-        const rHome = realResult!.home;
-        const rAway = realResult!.away;
-
-        const isArgentina = isDoublePointsMatch(m);
-
-        // Check exact
-        if (pHome === rHome && pAway === rAway) {
-          exactHits++;
-          totalPoints += isArgentina ? 4 : 3;
-        } 
-        // Check trend (winner/draw)
-        else if (
-          (pHome > pAway && rHome > rAway) || // Home win trend
-          (pHome < pAway && rHome < rAway) || // Away win trend
-          (pHome === pAway && rHome === rAway) // Draw trend
-        ) {
-          trendHits++;
-          totalPoints += 1;
-        } 
-        // Error
-        else {
-          errors++;
-        }
-      }
-    });
-
-    return {
-      totalPoints,
-      exactHits,
-      trendHits,
-      errors,
-      bonusPts: 0,
-      matchesEvaluated
-    };
-  }, [allMatches, predictions]);
 
 
 
@@ -442,31 +389,6 @@ export default function ProdePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-            
-            {/* Realtime stats badge */}
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <span className="text-xs block text-gray-400 font-bold uppercase tracking-wider">PUNTOS</span>
-                <span className={cn("text-2xl text-[#B8860B] font-bold", theme.typography.numbers)}>
-                  {pointsSummary.totalPoints}
-                </span>
-              </div>
-              <div className="border-l border-gray-700 h-8"></div>
-              <div className="text-center">
-                <span className="text-xs block text-gray-400 font-bold uppercase tracking-wider">EXACTOS</span>
-                <span className={cn("text-2xl text-white font-bold", theme.typography.numbers)}>
-                  {pointsSummary.exactHits}
-                </span>
-              </div>
-              <div className="border-l border-gray-700 h-8"></div>
-              <div className="text-center">
-                <span className="text-xs block text-gray-400 font-bold uppercase tracking-wider">TENDENCIAS</span>
-                <span className={cn("text-2xl text-white font-bold", theme.typography.numbers)}>
-                  {pointsSummary.trendHits}
-                </span>
-              </div>
-            </div>
-
             <button
               onClick={handleLogout}
               className={cn(
