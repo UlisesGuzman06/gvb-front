@@ -229,6 +229,7 @@ export default function ProdePage() {
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
       timeZone: 'America/Argentina/Buenos_Aires'
     }) + ' hs';
   };
@@ -353,13 +354,12 @@ export default function ProdePage() {
         const rHome = realResult!.home;
         const rAway = realResult!.away;
 
-        const isDouble = isDoublePointsMatch(m);
-        const multiplier = isDouble ? 2 : 1;
+        const isArgentina = isDoublePointsMatch(m);
 
         // Check exact
         if (pHome === rHome && pAway === rAway) {
           exactHits++;
-          totalPoints += 3 * multiplier;
+          totalPoints += isArgentina ? 4 : 3;
         } 
         // Check trend (winner/draw)
         else if (
@@ -368,7 +368,7 @@ export default function ProdePage() {
           (pHome === pAway && rHome === rAway) // Draw trend
         ) {
           trendHits++;
-          totalPoints += 1 * multiplier;
+          totalPoints += 1;
         } 
         // Error
         else {
@@ -506,17 +506,6 @@ export default function ProdePage() {
             <Trophy size={16} /> Especiales (Bonus)
           </button>
 
-          <button
-            onClick={() => setActiveMainTab('dashboard')}
-            className={cn(
-              "px-6 py-3.5 text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center gap-2",
-              activeMainTab === 'dashboard'
-                ? "bg-[#13315C] border-b-2 border-b-[#13315C] text-[#B8860B]"
-                : "bg-[#0B2545] border-transparent text-gray-400 hover:text-white"
-            )}
-          >
-            <Award size={16} /> Mi Rendimiento
-          </button>
         </div>
 
         {/* TAB 1: FIXTURES (MATCH PREDICTIONS) */}
@@ -707,12 +696,12 @@ export default function ProdePage() {
                                         ) ? "text-blue-400" : "text-red-400"
                                     )}>
                                       {pred.homeScore === realResult.home && pred.awayScore === realResult.away 
-                                        ? `+${3 * (isDouble ? 2 : 1)} pts` 
+                                        ? `+${isDouble ? 4 : 3} pts` 
                                         : (
                                           (pred.homeScore > pred.awayScore && realResult.home > realResult.away) ||
                                           (pred.homeScore < pred.awayScore && realResult.home < realResult.away) ||
                                           (pred.homeScore === pred.awayScore && realResult.home === realResult.away)
-                                        ) ? `+${1 * (isDouble ? 2 : 1)} pt` : "0 pts"
+                                        ) ? `+1 pt` : "0 pts"
                                       }
                                     </span>
                                   )}
@@ -920,12 +909,12 @@ export default function ProdePage() {
                                         ) ? "text-blue-400" : "text-red-400"
                                     )}>
                                       {pred.homeScore === realResult.home && pred.awayScore === realResult.away 
-                                        ? `+${3 * (isDouble ? 2 : 1)} pts` 
+                                        ? `+${isDouble ? 4 : 3} pts` 
                                         : (
                                           (pred.homeScore > pred.awayScore && realResult.home > realResult.away) ||
                                           (pred.homeScore < pred.awayScore && realResult.home < realResult.away) ||
                                           (pred.homeScore === pred.awayScore && realResult.home === realResult.away)
-                                        ) ? `+${1 * (isDouble ? 2 : 1)} pt` : "0 pts"
+                                        ) ? `+1 pt` : "0 pts"
                                       }
                                     </span>
                                   )}
@@ -1010,88 +999,6 @@ export default function ProdePage() {
           </div>
         )}
 
-
-        {/* TAB 3: PERFORMANCE / STATISTICS */}
-        {activeMainTab === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Card Exact hits */}
-              <div className="bg-[#13315C] border-2 border-[#111111] p-6 shadow-[4px_4px_0px_0px_#111111] space-y-2 text-center">
-                <span className="text-xs text-gray-400 uppercase tracking-widest font-bold">Aciertos Exactos</span>
-                <span className={cn("text-5xl block text-[#B8860B] font-bold", theme.typography.numbers)}>
-                  {pointsSummary.exactHits}
-                </span>
-                <p className="text-xs text-gray-400 font-inter">Partidos adivinados con marcador idéntico (3 pts c/u)</p>
-              </div>
-
-              {/* Card Trend hits */}
-              <div className="bg-[#13315C] border-2 border-[#111111] p-6 shadow-[4px_4px_0px_0px_#111111] space-y-2 text-center">
-                <span className="text-xs text-gray-400 uppercase tracking-widest font-bold">Aciertos de Tendencia</span>
-                <span className={cn("text-5xl block text-white font-bold", theme.typography.numbers)}>
-                  {pointsSummary.trendHits}
-                </span>
-                <p className="text-xs text-gray-400 font-inter">Partidos adivinados con ganador/empate (1 pt c/u)</p>
-              </div>
-
-              {/* Card Evaluated */}
-              <div className="bg-[#13315C] border-2 border-[#111111] p-6 shadow-[4px_4px_0px_0px_#111111] space-y-2 text-center">
-                <span className="text-xs text-gray-400 uppercase tracking-widest font-bold">Partidos Evaluados</span>
-                <span className={cn("text-5xl block text-white font-bold", theme.typography.numbers)}>
-                  {pointsSummary.matchesEvaluated}
-                </span>
-                <p className="text-xs text-gray-400 font-inter">Total de tus pronósticos contrastados con el resultado real</p>
-              </div>
-
-            </div>
-
-            {/* Simulated standings card */}
-            <div className="bg-[#13315C] border-2 border-[#111111] p-6 shadow-[4px_4px_0px_0px_#111111] space-y-4">
-              <h3 className="text-lg font-bold uppercase tracking-wider text-white">Mi Posición en la Comunidad</h3>
-              <p className="text-xs text-gray-300 font-inter">
-                Esta tabla simula tu posición en el ranking general con base en los puntos acumulados en la sesión de pruebas.
-              </p>
-              
-              <div className="overflow-hidden border border-[#111111] bg-[#0B2545]">
-                <table className="w-full text-left border-collapse text-xs md:text-sm font-mono">
-                  <thead>
-                    <tr className="bg-[#111111] text-white font-bold uppercase text-[10px] md:text-xs">
-                      <th className="py-2.5 px-3 w-12 text-center">Pos</th>
-                      <th className="py-2.5 px-3">Participante</th>
-                      <th className="py-2.5 px-3 text-center">Exactos</th>
-                      <th className="py-2.5 px-3 text-center">Tendencia</th>
-                      <th className="py-2.5 px-3 text-center bg-[#B8860B] text-[#111111] w-20">Puntos</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {/* User is ranked depending on score! */}
-                    <tr className="bg-[#13315C] text-[#B8860B] font-bold">
-                      <td className="py-3 px-3 text-center">1</td>
-                      <td className="py-3 px-3 uppercase">{user.name} (Tú)</td>
-                      <td className="py-3 px-3 text-center">{pointsSummary.exactHits}</td>
-                      <td className="py-3 px-3 text-center">{pointsSummary.trendHits}</td>
-                      <td className="py-3 px-3 text-center bg-[#B8860B] text-[#111111]">{pointsSummary.totalPoints} pts</td>
-                    </tr>
-                    <tr className="text-gray-400">
-                      <td className="py-3 px-3 text-center">2</td>
-                      <td className="py-3 px-3">Invitado GVB 1</td>
-                      <td className="py-3 px-3 text-center">2</td>
-                      <td className="py-3 px-3 text-center">4</td>
-                      <td className="py-3 px-3 text-center">10 pts</td>
-                    </tr>
-                    <tr className="text-gray-400">
-                      <td className="py-3 px-3 text-center">3</td>
-                      <td className="py-3 px-3">Invitado GVB 2</td>
-                      <td className="py-3 px-3 text-center">1</td>
-                      <td className="py-3 px-3 text-center">3</td>
-                      <td className="py-3 px-3 text-center">6 pts</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* GROUP PREDICTIONS MODAL */}
         {selectedMatchForPredictions && (

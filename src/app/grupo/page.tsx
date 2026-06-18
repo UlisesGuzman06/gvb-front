@@ -168,6 +168,7 @@ export default function GrupoPage() {
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
       timeZone: 'America/Argentina/Buenos_Aires'
     }) + ' hs';
   };
