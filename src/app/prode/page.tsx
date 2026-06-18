@@ -18,7 +18,9 @@ import {
   LogOut, 
   Award,
   HelpCircle,
-  Zap
+  Zap,
+  Users,
+  X
 } from 'lucide-react';
 import API_URL from '@/config/api';
 
@@ -58,6 +60,34 @@ export default function ProdePage() {
   
   // Notification States
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Group Predictions Modal States
+  const [selectedMatchForPredictions, setSelectedMatchForPredictions] = useState<any | null>(null);
+  const [groupPredictions, setGroupPredictions] = useState<any[]>([]);
+  const [isLoadingGroupPredictions, setIsLoadingGroupPredictions] = useState<boolean>(false);
+
+  const fetchGroupPredictions = async (matchId: string) => {
+    const token = localStorage.getItem('gvb_token');
+    if (!token) return;
+
+    setIsLoadingGroupPredictions(true);
+    try {
+      const response = await fetch(`${API_URL}/predictions/match/${matchId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Error al cargar predicciones');
+      const data = await response.json();
+      setGroupPredictions(data);
+    } catch (err) {
+      console.error(err);
+      setToast({
+        message: 'No se pudieron cargar las predicciones del grupo.',
+        type: 'error'
+      });
+    } finally {
+      setIsLoadingGroupPredictions(false);
+    }
+  };
 
   // Focus and styles
   const focusClasses = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8860B]";
@@ -149,16 +179,36 @@ export default function ProdePage() {
     }
   };
 
+  const getArgentinaDateString = (matchDateStr: string, matchTimeStr: string) => {
+    try {
+      const utcDate = new Date(`${matchDateStr}T${matchTimeStr.substring(0, 8)}Z`);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      const parts = formatter.formatToParts(utcDate);
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return matchDateStr;
+    }
+  };
+
   const todayMatches = useMemo(() => {
     const todayStr = getArgentinaTodayString();
-    return allMatches.filter(m => m.date === todayStr);
+    return allMatches.filter(m => {
+      return getArgentinaDateString(m.date, m.time) === todayStr;
+    });
   }, [allMatches]);
 
-  // Lock logic helper: predictions close 10 minutes before match start
+  // Lock logic helper: predictions close exactly at match start
   const getLockLimit = (matchDateStr: string, matchTimeStr: string) => {
     try {
-      const matchStart = new Date(`${matchDateStr}T${matchTimeStr || '12:00:00'}Z`);
-      return new Date(matchStart.getTime() - 10 * 60 * 1000);
+      return new Date(`${matchDateStr}T${matchTimeStr || '12:00:00'}Z`);
     } catch (e) {
       return new Date();
     }
@@ -669,6 +719,19 @@ export default function ProdePage() {
                                 </div>
                               )}
                             </div>
+
+                            {/* Group Predictions Button */}
+                            <div className="mt-3 pt-3 border-t border-[#0B2545] flex justify-end">
+                              <button
+                                onClick={() => {
+                                  setSelectedMatchForPredictions(match);
+                                  fetchGroupPredictions(String(match.id));
+                                }}
+                                className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#B8860B] hover:text-white transition-colors bg-[#0B2545] border border-[#111111] px-3 py-1.5 shadow-[2px_2px_0px_0px_#111111]"
+                              >
+                                <Users size={12} /> Ver predicciones del grupo
+                              </button>
+                            </div>
                       </div>
                     );
                   })}
@@ -869,6 +932,19 @@ export default function ProdePage() {
                                 </div>
                               )}
                             </div>
+
+                            {/* Group Predictions Button */}
+                            <div className="mt-3 pt-3 border-t border-[#0B2545] flex justify-end">
+                              <button
+                                onClick={() => {
+                                  setSelectedMatchForPredictions(match);
+                                  fetchGroupPredictions(String(match.id));
+                                }}
+                                className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#B8860B] hover:text-white transition-colors bg-[#0B2545] border border-[#111111] px-3 py-1.5 shadow-[2px_2px_0px_0px_#111111]"
+                              >
+                                <Users size={12} /> Ver predicciones del grupo
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -1012,6 +1088,105 @@ export default function ProdePage() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GROUP PREDICTIONS MODAL */}
+        {selectedMatchForPredictions && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B2545]/80 backdrop-blur-sm">
+            <div className="bg-[#13315C] border-2 border-[#111111] w-full max-w-md shadow-[8px_8px_0px_0px_#111111] overflow-hidden flex flex-col max-h-[85vh]">
+              {/* Header */}
+              <div className="bg-[#111111] p-4 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-[#B8860B]">
+                  <Users size={20} />
+                  <h3 className="font-bold uppercase tracking-wider text-sm">Predicciones del Grupo</h3>
+                </div>
+                <button 
+                  onClick={() => setSelectedMatchForPredictions(null)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="Cerrar modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Match Summary Banner */}
+              <div className="bg-[#0B2545] p-4 border-b border-[#111111] text-center">
+                <span className="text-[10px] text-gray-400 font-mono block uppercase mb-1">
+                  {selectedMatchForPredictions.group || selectedMatchForPredictions.round}
+                </span>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="font-bold text-sm uppercase">{selectedMatchForPredictions.home.name}</span>
+                  <span className="text-gray-400 font-bold">vs</span>
+                  <span className="font-bold text-sm uppercase">{selectedMatchForPredictions.away.name}</span>
+                </div>
+                {selectedMatchForPredictions.status === 'FINISHED' && selectedMatchForPredictions.homeScore !== null && selectedMatchForPredictions.awayScore !== null && (
+                  <div className="inline-block mt-1.5 px-2 py-0.5 bg-[#B8860B]/10 border border-[#B8860B]/30 text-xs font-mono text-[#B8860B]">
+                    Resultado Real: {selectedMatchForPredictions.homeScore} - {selectedMatchForPredictions.awayScore}
+                  </div>
+                )}
+              </div>
+
+              {/* Content / List of predictions */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {isLoadingGroupPredictions ? (
+                  <div className="py-8 text-center">
+                    <div className="animate-spin h-6 w-6 border-2 border-[#B8860B] border-t-transparent mx-auto mb-2"></div>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Cargando Predicciones...</p>
+                  </div>
+                ) : groupPredictions.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {groupPredictions.map((pred) => (
+                      <div 
+                        key={pred.userId}
+                        className={cn(
+                          "p-3 border border-[#111111] flex items-center justify-between transition-colors bg-[#0B2545]/40",
+                          pred.isSelf && "border-[#B8860B] bg-[#B8860B]/5"
+                        )}
+                      >
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold uppercase tracking-wide truncate flex items-center gap-1.5">
+                            {pred.userName}
+                            {pred.isSelf && (
+                              <span className="bg-[#B8860B] text-[#111111] text-[8px] px-1 font-bold leading-none py-0.5">TÚ</span>
+                            )}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-mono truncate">{pred.userEmail}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 font-mono">
+                          {pred.hasPrediction ? (
+                            <>
+                              <div className="w-7 h-7 flex items-center justify-center border border-[#111111] bg-[#13315C] text-white font-bold text-xs">
+                                {pred.homeScore}
+                              </div>
+                              <span className="text-gray-400 font-bold">:</span>
+                              <div className="w-7 h-7 flex items-center justify-center border border-[#111111] bg-[#13315C] text-white font-bold text-xs">
+                                {pred.awayScore}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-gray-500 italic uppercase">Sin pronóstico</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-gray-400 py-6">No hay predicciones registradas.</p>
+                )}
+              </div>
+
+              {/* Footer / Info */}
+              <div className="bg-[#111111] p-3 text-center border-t border-[#111111]">
+                <button 
+                  onClick={() => setSelectedMatchForPredictions(null)}
+                  className="bg-[#B8860B] text-[#111111] text-xs font-bold uppercase tracking-widest px-4 py-2 hover:bg-[#B8860B]/90 transition-colors w-full"
+                >
+                  Cerrar
+                </button>
               </div>
             </div>
           </div>

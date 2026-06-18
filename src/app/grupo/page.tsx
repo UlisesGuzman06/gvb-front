@@ -145,11 +145,10 @@ export default function GrupoPage() {
     return isArgentina;
   };
 
-  // Lock logic helper: predictions close 10 minutes before match start
+  // Lock logic helper: predictions close exactly at match start
   const getLockLimit = (matchDateStr: string, matchTimeStr: string) => {
     try {
-      const matchStart = new Date(`${matchDateStr}T${matchTimeStr || '12:00:00'}Z`);
-      return new Date(matchStart.getTime() - 10 * 60 * 1000);
+      return new Date(`${matchDateStr}T${matchTimeStr || '12:00:00'}Z`);
     } catch (e) {
       return new Date();
     }
@@ -668,32 +667,26 @@ export default function GrupoPage() {
 
                                           {/* Predicted Score or Locked Badge */}
                                           <div className="flex items-center gap-1 shrink-0">
-                                            {isLocked || isSelf ? (
-                                              pred && (pred.homeScore !== null && pred.awayScore !== null) ? (
-                                                <>
-                                                  <div className="w-8 h-8 flex items-center justify-center border-2 border-[#111111] bg-[#13315C] text-white font-bold text-sm">
-                                                    {pred.homeScore}
-                                                  </div>
-                                                  <span className="text-gray-400 font-bold">:</span>
-                                                  <div className="w-8 h-8 flex items-center justify-center border-2 border-[#111111] bg-[#13315C] text-white font-bold text-sm">
-                                                    {pred.awayScore}
-                                                  </div>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <div className="w-8 h-8 flex items-center justify-center border border-gray-800 bg-[#13315C] text-gray-500 font-bold text-sm italic">
-                                                    -
-                                                  </div>
-                                                  <span className="text-gray-500 font-bold">:</span>
-                                                  <div className="w-8 h-8 flex items-center justify-center border border-gray-800 bg-[#13315C] text-gray-500 font-bold text-sm italic">
-                                                    -
-                                                  </div>
-                                                </>
-                                              )
+                                            {pred && (pred.homeScore !== null && pred.awayScore !== null) ? (
+                                              <>
+                                                <div className="w-8 h-8 flex items-center justify-center border-2 border-[#111111] bg-[#13315C] text-white font-bold text-sm">
+                                                  {pred.homeScore}
+                                                </div>
+                                                <span className="text-gray-400 font-bold">:</span>
+                                                <div className="w-8 h-8 flex items-center justify-center border-2 border-[#111111] bg-[#13315C] text-white font-bold text-sm">
+                                                  {pred.awayScore}
+                                                </div>
+                                              </>
                                             ) : (
-                                              <span className="text-gray-400 flex items-center gap-1 bg-[#13315C] px-2 py-1 border border-gray-850 font-semibold uppercase text-[9px]">
-                                                <Lock size={10} className="text-[#B8860B]" /> Oculto
-                                              </span>
+                                              <>
+                                                <div className="w-8 h-8 flex items-center justify-center border border-gray-800 bg-[#13315C] text-gray-500 font-bold text-sm italic">
+                                                  -
+                                                </div>
+                                                <span className="text-gray-500 font-bold">:</span>
+                                                <div className="w-8 h-8 flex items-center justify-center border border-gray-800 bg-[#13315C] text-gray-500 font-bold text-sm italic">
+                                                  -
+                                                </div>
+                                              </>
                                             )}
                                           </div>
 
