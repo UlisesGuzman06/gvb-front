@@ -314,65 +314,6 @@ export default function FixturePage() {
                   </div>
                 </div>
               ))}
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#13315C] border-2 border-[#111111] p-4 shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] mt-8">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    Mostrando partidos {Math.min(sortedMatches.length, (currentPage - 1) * matchesPerPage + 1)}-{Math.min(sortedMatches.length, currentPage * matchesPerPage)} de {sortedMatches.length}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Previous Button */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className={cn(
-                        "bg-[#B8860B] text-[#111111] p-2.5 font-bold uppercase tracking-widest border-2 border-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] transition-all flex items-center justify-center shrink-0 cursor-pointer disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(17,17,17,1)]",
-                        focusClasses
-                      )}
-                      aria-label="Página anterior"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className="flex flex-wrap items-center justify-center gap-1.5">
-                      {Array.from({ length: totalPages }).map((_, index) => {
-                        const pageNum = index + 1;
-                        const isCurrent = currentPage === pageNum;
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={cn(
-                              "w-10 h-10 flex items-center justify-center border-2 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer",
-                              isCurrent
-                                ? "bg-[#B8860B] border-[#111111] text-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]"
-                                : "bg-transparent border-[#CCCCCC]/20 text-white hover:border-[#B8860B] hover:text-[#B8860B]",
-                              focusClasses
-                            )}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      className={cn(
-                        "bg-[#B8860B] text-[#111111] p-2.5 font-bold uppercase tracking-widest border-2 border-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] transition-all flex items-center justify-center shrink-0 cursor-pointer disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(17,17,17,1)]",
-                        focusClasses
-                      )}
-                      aria-label="Página siguiente"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <EmptyState 
