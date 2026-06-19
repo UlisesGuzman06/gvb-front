@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { MatchCard } from '@/components/ui/MatchCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -20,6 +20,11 @@ export default function FixturePage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<string>('todos');
   const [selectedDay, setSelectedDay] = useState<string>('todos');
+
+  // Auto-scroll to top on page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   // Fetch real data from hooks
   const { 
