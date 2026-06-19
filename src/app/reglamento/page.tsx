@@ -157,21 +157,21 @@ export default function ReglamentoPage() {
                 <span className="text-xs text-gray-400 font-bold font-mono">FASE DE GRUPOS</span>
               </div>
               <h3 className={cn("text-2xl uppercase text-white", theme.typography.heading)}>
-                Partidos con Puntaje Doble
+                Partidos con Puntaje Especial (Argentina)
               </h3>
               <p className="text-gray-300 text-sm font-inter">
-                Los partidos donde juegue la selección de <strong>Argentina</strong> y los **clásicos o rivalidades definidas** de la fase de grupos otorgarán el doble de puntos.
+                Los partidos donde juegue la selección de <strong>Argentina</strong> otorgarán un plus en caso de acierto exacto.
               </p>
             </div>
             
             <div className="flex gap-4 w-full sm:w-auto">
               <div className="bg-[#13315C] border border-[#B8860B] p-4 text-center flex-1 sm:flex-initial">
                 <span className="text-xs block text-gray-400 uppercase font-bold tracking-widest">Acierto Exacto</span>
-                <span className={cn("text-3xl text-[#B8860B] font-bold block", theme.typography.numbers)}>6 PTS</span>
+                <span className={cn("text-3xl text-[#B8860B] font-bold block", theme.typography.numbers)}>4 PTS</span>
               </div>
               <div className="bg-[#13315C] border border-[#B8860B] p-4 text-center flex-1 sm:flex-initial">
                 <span className="text-xs block text-gray-400 uppercase font-bold tracking-widest">Tendencia</span>
-                <span className={cn("text-3xl text-white font-bold block", theme.typography.numbers)}>2 PTS</span>
+                <span className={cn("text-3xl text-white font-bold block", theme.typography.numbers)}>1 PT</span>
               </div>
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function ReglamentoPage() {
                     Mayor Cantidad de Resultados Exactos
                   </h4>
                   <p className="text-gray-400 text-xs mt-0.5">
-                    Se comparará y tendrá prioridad el participante que haya acertado más marcadores exactos (3 puntos o 6 puntos en partidos especiales).
+                    Se comparará y tendrá prioridad el participante que haya acertado más marcadores exactos (3 puntos o 4 puntos en partidos especiales).
                   </p>
                 </div>
               </div>
