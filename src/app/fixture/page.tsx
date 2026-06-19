@@ -7,6 +7,7 @@ import { SectionTitle } from '@/components/ui/SectionTitle';
 import { MatchCard } from '@/components/ui/MatchCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { MatchCardSkeleton } from '@/components/ui/Skeletons';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { useMatches } from '@/hooks/useMatches';
 
@@ -15,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { Fixture } from '@/types/worldcup';
 
 export default function FixturePage() {
-  const [visibleMatchesCount, setVisibleMatchesCount] = useState<number>(15);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<string>('todos');
   const [selectedDay, setSelectedDay] = useState<string>('todos');
@@ -93,12 +94,14 @@ export default function FixturePage() {
     });
   }, [filteredMatches]);
 
+  const matchesPerPage = 12;
+  const totalPages = Math.ceil(sortedMatches.length / matchesPerPage);
+
   // Paginated visible matches
   const visibleMatches = useMemo(() => {
-    return sortedMatches.slice(0, visibleMatchesCount);
-  }, [sortedMatches, visibleMatchesCount]);
-
-  const hasMoreMatches = sortedMatches.length > visibleMatchesCount;
+    const start = (currentPage - 1) * matchesPerPage;
+    return sortedMatches.slice(start, start + matchesPerPage);
+  }, [sortedMatches, currentPage]);
 
   // Get unique days for day filter based on current stage selection
   const uniqueDays = useMemo(() => {
@@ -168,7 +171,7 @@ export default function FixturePage() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setVisibleMatchesCount(15);
+                  setCurrentPage(1);
                 }}
                 placeholder="Buscar selección..."
                 className="w-full bg-[#0B2545] border border-[#CCCCCC]/20 text-white text-xs font-bold p-3 outline-none focus:border-[#B8860B] placeholder-gray-400"
@@ -182,7 +185,7 @@ export default function FixturePage() {
                 onChange={(e) => {
                   setSelectedStage(e.target.value);
                   setSelectedDay('todos'); // Resetear día al cambiar de fase
-                  setVisibleMatchesCount(15);
+                  setCurrentPage(1);
                 }}
                 className="w-full md:w-auto bg-[#0B2545] border border-[#CCCCCC]/20 text-white text-xs font-bold uppercase tracking-wider p-3 outline-none focus:border-[#B8860B] cursor-pointer"
               >
@@ -206,7 +209,7 @@ export default function FixturePage() {
                 value={selectedDay}
                 onChange={(e) => {
                   setSelectedDay(e.target.value);
-                  setVisibleMatchesCount(15);
+                  setCurrentPage(1);
                 }}
                 className="w-full md:w-auto bg-[#0B2545] border border-[#CCCCCC]/20 text-white text-xs font-bold uppercase tracking-wider p-3 outline-none focus:border-[#B8860B] cursor-pointer"
               >
@@ -253,18 +256,62 @@ export default function FixturePage() {
                 </div>
               ))}
 
-              {/* Load More Button */}
-              {hasMoreMatches && (
-                <div className="text-center pt-8">
-                  <button
-                    onClick={() => setVisibleMatchesCount(prev => prev + 15)}
-                    className={cn(
-                      "bg-[#B8860B] text-[#111111] px-8 py-3 text-sm font-bold uppercase tracking-widest border-2 border-[#111111] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] transition-all cursor-pointer",
-                      focusClasses
-                    )}
-                  >
-                    Ver más partidos
-                  </button>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#13315C] border-2 border-[#111111] p-4 shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] mt-8">
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    Mostrando partidos {Math.min(sortedMatches.length, (currentPage - 1) * matchesPerPage + 1)}-{Math.min(sortedMatches.length, currentPage * matchesPerPage)} de {sortedMatches.length}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className={cn(
+                        "bg-[#B8860B] text-[#111111] p-2.5 font-bold uppercase tracking-widest border-2 border-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] transition-all flex items-center justify-center shrink-0 cursor-pointer disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(17,17,17,1)]",
+                        focusClasses
+                      )}
+                      aria-label="Página anterior"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      {Array.from({ length: totalPages }).map((_, index) => {
+                        const pageNum = index + 1;
+                        const isCurrent = currentPage === pageNum;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={cn(
+                              "w-10 h-10 flex items-center justify-center border-2 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer",
+                              isCurrent
+                                ? "bg-[#B8860B] border-[#111111] text-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]"
+                                : "bg-transparent border-[#CCCCCC]/20 text-white hover:border-[#B8860B] hover:text-[#B8860B]",
+                              focusClasses
+                            )}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className={cn(
+                        "bg-[#B8860B] text-[#111111] p-2.5 font-bold uppercase tracking-widest border-2 border-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] transition-all flex items-center justify-center shrink-0 cursor-pointer disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(17,17,17,1)]",
+                        focusClasses
+                      )}
+                      aria-label="Página siguiente"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
