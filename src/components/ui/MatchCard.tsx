@@ -14,8 +14,9 @@ export function MatchCard({ fixture, liveData, className, ...props }: MatchCardP
   const isFinished = liveData?.status === 'FINISHED' || (fixture as any).status === 'FINISHED';
   
   const score = liveData?.scores?.score 
-    || (fixture as any).scores?.score 
-    || null;
+    || (fixture.homeScore !== undefined && fixture.homeScore !== null && fixture.awayScore !== undefined && fixture.awayScore !== null
+        ? `${fixture.homeScore} - ${fixture.awayScore}`
+        : null);
 
   // Team Details
   const homeTeamName = fixture.home.name || 'Información no disponible';

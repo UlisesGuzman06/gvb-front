@@ -7,7 +7,7 @@ export function Footer() {
   const links = [
     { label: 'Reglamento', href: '/reglamento' },
     { label: 'Ranking', href: '/#ranking' },
-    { label: 'Partidos', href: '/#partidos' },
+    { label: 'Fixture', href: '/#fixture' },
     { label: 'Estadísticas', href: '/#estadisticas' },
   ];
 

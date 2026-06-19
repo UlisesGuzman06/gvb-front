@@ -525,8 +525,12 @@ export default function ProdePage() {
                                 <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                                   {match.home.name}
                                 </span>
-                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0">
-                                  {match.home.name.substring(0, 3).toUpperCase()}
+                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
+                                  {match.home.logo ? (
+                                    <img src={match.home.logo} alt={match.home.name} className="w-full h-full object-contain p-0.5" />
+                                  ) : (
+                                    match.home.name.substring(0, 3).toUpperCase()
+                                  )}
                                 </div>
                               </div>
 
@@ -559,8 +563,12 @@ export default function ProdePage() {
 
                               {/* Away Team */}
                               <div className="flex-1 flex items-center gap-3 justify-start text-left">
-                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0">
-                                  {match.away.name.substring(0, 3).toUpperCase()}
+                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
+                                  {match.away.logo ? (
+                                    <img src={match.away.logo} alt={match.away.name} className="w-full h-full object-contain p-0.5" />
+                                  ) : (
+                                    match.away.name.substring(0, 3).toUpperCase()
+                                  )}
                                 </div>
                                 <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                                   {match.away.name}
@@ -738,8 +746,12 @@ export default function ProdePage() {
                                 <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                                   {match.home.name}
                                 </span>
-                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0">
-                                  {match.home.name.substring(0, 3).toUpperCase()}
+                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
+                                  {match.home.logo ? (
+                                    <img src={match.home.logo} alt={match.home.name} className="w-full h-full object-contain p-0.5" />
+                                  ) : (
+                                    match.home.name.substring(0, 3).toUpperCase()
+                                  )}
                                 </div>
                               </div>
 
@@ -772,8 +784,12 @@ export default function ProdePage() {
 
                               {/* Away Team */}
                               <div className="flex-1 flex items-center gap-3 justify-start text-left">
-                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0">
-                                  {match.away.name.substring(0, 3).toUpperCase()}
+                                <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
+                                  {match.away.logo ? (
+                                    <img src={match.away.logo} alt={match.away.name} className="w-full h-full object-contain p-0.5" />
+                                  ) : (
+                                    match.away.name.substring(0, 3).toUpperCase()
+                                  )}
                                 </div>
                                 <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                                   {match.away.name}

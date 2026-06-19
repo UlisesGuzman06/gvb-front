@@ -20,7 +20,7 @@ export function Navbar() {
 
   const baseLinks = [
     { label: 'Inicio', href: '/' },
-    { label: 'Partidos', href: '/#partidos' },
+    { label: 'Fixture', href: '/#fixture' },
     { label: 'Reglamento', href: '/reglamento' },
   ];
 

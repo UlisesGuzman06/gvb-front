@@ -83,7 +83,7 @@ export class WorldCupApiProvider {
           team: {
             id: m.home.id || getTeamId(homeName),
             name: homeName,
-            logo: '',
+            logo: m.home.logo || '',
           }
         };
       }
@@ -102,7 +102,7 @@ export class WorldCupApiProvider {
           team: {
             id: m.away.id || getTeamId(awayName),
             name: awayName,
-            logo: '',
+            logo: m.away.logo || '',
           }
         };
       }
@@ -176,7 +176,11 @@ export class WorldCupApiProvider {
     return this.fetchHelper<GoalScorer[]>('/api/worldcup/goalscorers');
   }
 
-  async getSquads(teamId: number): Promise<Squad[]> {
-    return this.fetchHelper<Squad[]>(`/api/worldcup/squads?team_id=${teamId}`);
+  async getSquads(teamId: number): Promise<any[]> {
+    const response = await fetch(`${API_URL}/matches/teams/${teamId}/squad`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
   }
 }
