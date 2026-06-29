@@ -142,8 +142,8 @@ export default function Home() {
               <SectionTitle subtitle="Tabla de posiciones oficial del torneo">Clasificación</SectionTitle>
               
               {/* Group Selector Tabs */}
-              <div className="overflow-x-auto no-scrollbar mb-6">
-                <div className="flex gap-2 min-w-max">
+              <div className="mb-6">
+                <div className="flex flex-wrap gap-2">
                   {GROUPS.map(g => (
                     <button
                       key={g}
