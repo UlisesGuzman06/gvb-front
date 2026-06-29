@@ -43,9 +43,31 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter);
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 /* Force straight edges */
 * {
   border-radius: 0px !important;
+}
+
+/* Smooth momentum scrolling on iOS for overflow containers */
+.overflow-x-auto,
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure inputs don't zoom on iOS (font-size must be >= 16px) */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+/* Better touch targets on mobile */
+@media (max-width: 640px) {
+  button {
+    min-height: 40px;
+  }
 }

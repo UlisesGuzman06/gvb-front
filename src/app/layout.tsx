@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Bebas_Neue, Space_Grotesk } from "next/font/google";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -26,6 +26,12 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "GVB WORLD CUP 2026",
   description: "Plataforma premium de pronósticos para la Copa Mundial GVB 2026",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

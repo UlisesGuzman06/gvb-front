@@ -356,7 +356,7 @@ export default function ProdePage() {
         {/* TOAST SYSTEM */}
         {toast && (
           <div className={cn(
-            "fixed bottom-5 right-5 z-50 p-4 border-2 border-[#111111] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex items-start gap-3 text-sm max-w-md animate-bounce",
+            "fixed bottom-3 left-3 right-3 sm:left-auto sm:right-5 sm:bottom-5 z-50 p-4 border-2 border-[#111111] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex items-start gap-3 text-sm sm:max-w-md animate-bounce",
             toast.type === 'success' ? 'bg-[#13315C] text-[#F4F1EA] border-green-500' : 
             toast.type === 'error' ? 'bg-red-950/90 text-[#F4F1EA] border-red-500' :
             'bg-[#111111] text-[#F4F1EA] border-[#B8860B]'
@@ -403,29 +403,29 @@ export default function ProdePage() {
 
 
         {/* MAIN NAVIGATION TABS */}
-        <div className="flex border-b-2 border-[#13315C] gap-2">
+        <div className="flex border-b-2 border-[#13315C] gap-1 sm:gap-2">
           <button
             onClick={() => setActiveMainTab('fixtures')}
             className={cn(
-              "px-6 py-3.5 text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center gap-2",
+              "flex-1 sm:flex-none px-3 sm:px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center justify-center gap-1 sm:gap-2",
               activeMainTab === 'fixtures'
                 ? "bg-[#13315C] border-b-2 border-b-[#13315C] text-[#B8860B]"
                 : "bg-[#0B2545] border-transparent text-gray-400 hover:text-white"
             )}
           >
-            <Calendar size={16} /> Pronósticos de Partidos
+            <Calendar size={16} /> <span className="hidden sm:inline">Pronósticos de </span>Partidos
           </button>
           
           <button
             onClick={() => setActiveMainTab('bonus')}
             className={cn(
-              "px-6 py-3.5 text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center gap-2",
+              "flex-1 sm:flex-none px-3 sm:px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center justify-center gap-1 sm:gap-2",
               activeMainTab === 'bonus'
                 ? "bg-[#13315C] border-b-2 border-b-[#13315C] text-[#B8860B]"
                 : "bg-[#0B2545] border-transparent text-gray-400 hover:text-white"
             )}
           >
-            <Trophy size={16} /> Especiales (Bonus)
+            <Trophy size={16} /> Especiales
           </button>
 
         </div>
@@ -435,29 +435,29 @@ export default function ProdePage() {
           <div className="space-y-6">
             
             {/* SUB-TABS: STAGES */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#13315C] p-4 border border-[#111111]">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-3 bg-[#13315C] p-4 border border-[#111111]">
+              <div className="flex gap-2 justify-between sm:justify-start">
                 <button
                   onClick={() => setActiveStage('groups')}
                   className={cn(
-                    "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors",
+                    "flex-1 sm:flex-none px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors",
                     activeStage === 'groups'
                       ? "bg-[#B8860B] text-[#111111]"
                       : "bg-[#0B2545] text-gray-300 hover:text-white"
                   )}
                 >
-                  Fase de Grupos
+                  Grupos
                 </button>
                 <button
                   onClick={() => setActiveStage('knockouts')}
                   className={cn(
-                    "px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors",
+                    "flex-1 sm:flex-none px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors",
                     activeStage === 'knockouts'
                       ? "bg-[#B8860B] text-[#111111]"
                       : "bg-[#0B2545] text-gray-300 hover:text-white"
                   )}
                 >
-                  Fase Eliminatoria
+                  Eliminatoria
                 </button>
               </div>
 
@@ -465,7 +465,7 @@ export default function ProdePage() {
               <button
                 onClick={savePredictions}
                 className={cn(
-                  "w-full sm:w-auto bg-[#B8860B] text-[#111111] px-6 py-2.5 text-xs font-bold uppercase tracking-widest border border-[#111111] shadow-[3px_3px_0px_0px_#111111] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#111111] transition-all flex items-center justify-center gap-2",
+                  "w-full bg-[#B8860B] text-[#111111] px-6 py-2.5 text-xs font-bold uppercase tracking-widest border border-[#111111] shadow-[3px_3px_0px_0px_#111111] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#111111] transition-all flex items-center justify-center gap-2",
                   focusClasses
                 )}
               >
@@ -660,21 +660,23 @@ export default function ProdePage() {
 
             {/* IF STAGE === GROUPS, SHOW GROUP SELECTOR */}
             {activeStage === 'groups' && (
-              <div className="flex flex-wrap gap-1.5 bg-[#13315C]/40 p-3 border border-[#13315C]">
-                {GROUPS.map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setSelectedGroup(g)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all",
-                      selectedGroup === g
-                        ? "bg-[#111111] border-[#111111] text-white"
-                        : "bg-[#0B2545] border-[#13315C] text-gray-400 hover:text-white"
-                    )}
-                  >
-                    Grupo {g}
-                  </button>
-                ))}
+              <div className="overflow-x-auto">
+                <div className="flex gap-1.5 bg-[#13315C]/40 p-3 border border-[#13315C] min-w-max">
+                  {GROUPS.map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setSelectedGroup(g)}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all whitespace-nowrap",
+                        selectedGroup === g
+                          ? "bg-[#111111] border-[#111111] text-white"
+                          : "bg-[#0B2545] border-[#13315C] text-gray-400 hover:text-white"
+                      )}
+                    >
+                      Grupo {g}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -940,8 +942,8 @@ export default function ProdePage() {
 
         {/* GROUP PREDICTIONS MODAL */}
         {selectedMatchForPredictions && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B2545]/80 backdrop-blur-sm">
-            <div className="bg-[#13315C] border-2 border-[#111111] w-full max-w-md shadow-[8px_8px_0px_0px_#111111] overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#0B2545]/80 backdrop-blur-sm">
+            <div className="bg-[#13315C] border-2 border-[#111111] w-full sm:max-w-md shadow-[8px_8px_0px_0px_#111111] overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh]">
               {/* Header */}
               <div className="bg-[#111111] p-4 flex justify-between items-center">
                 <div className="flex items-center gap-2 text-[#B8860B]">

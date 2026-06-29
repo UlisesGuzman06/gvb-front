@@ -83,6 +83,9 @@ export default function AdminPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isLoadingAction, setIsLoadingAction] = useState<boolean>(false);
 
+  // Selected Group/Stage filters for User Predictions list
+  const [predFilter, setPredFilter] = useState<'all' | 'groups' | 'knockouts'>('all');
+
   const focusClasses = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8860B]";
 
   // Auth Guard
@@ -210,6 +213,16 @@ export default function AdminPage() {
     });
   }, [allMatches, activeStage, selectedGroup]);
 
+  // User Predictions Filtered Matches
+  const filteredPredMatches = useMemo(() => {
+    return allMatches.filter(m => {
+      const isKnockout = !(m.round || '').toLowerCase().includes('fecha') && !(m.round || '').toLowerCase().includes('matchday');
+      if (predFilter === 'groups') return !isKnockout;
+      if (predFilter === 'knockouts') return isKnockout;
+      return true; // 'all'
+    });
+  }, [allMatches, predFilter]);
+
   // Handle Match Score Input Change
   const handleMatchInputChange = (matchId: string | number, side: 'home' | 'away', value: string) => {
     if (value !== '' && !/^\d+$/.test(value)) return;
@@ -246,11 +259,81 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('gvb_user');
+          localStorage.removeItem('gvb_token');
+          router.push('/login');
+          throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+        }
         throw new Error('Error al cargar resultado del partido.');
       }
 
       setToast({ message: '¡Resultado oficial guardado y puntos recalculados!', type: 'success' });
       // Invalidate cached data so home page standings + match list refresh immediately
+      await queryClient.invalidateQueries({ queryKey: ['fixtures'] });
+      await queryClient.invalidateQueries({ queryKey: ['standings'] });
+      refetchMatches();
+      loadUsers(); // Refresh participants standings
+
+    } catch (err: any) {
+      setToast({ message: err.message || 'Error de conexión.', type: 'error' });
+    } finally {
+      setIsLoadingAction(false);
+    }
+  };
+
+  // Submit Bulk Match Results
+  const handleSaveAllResults = async () => {
+    // Find all matches in the current view that have both home and away scores entered
+    const matchesToUpdate = filteredMatches
+      .map(match => {
+        // Look up input, falling back to original values if not edited but already finished
+        const input = matchInputs[match.id];
+        if (input && input.home !== '' && input.away !== '') {
+          const homeScore = parseInt(input.home, 10);
+          const awayScore = parseInt(input.away, 10);
+          // Check if it's different from the original score to avoid redundant updates
+          const isDifferent = match.homeScore !== homeScore || match.awayScore !== awayScore || match.status !== 'FINISHED';
+          if (isDifferent) {
+            return {
+              id: String(match.id),
+              homeScore,
+              awayScore
+            };
+          }
+        }
+        return null;
+      })
+      .filter(Boolean) as { id: string; homeScore: number; awayScore: number }[];
+
+    if (matchesToUpdate.length === 0) {
+      setToast({ message: 'No hay cambios en los resultados para guardar.', type: 'error' });
+      return;
+    }
+
+    setIsLoadingAction(true);
+    try {
+      const token = localStorage.getItem('gvb_token');
+      const response = await fetch(`${API_URL}/matches/bulk-results`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ results: matchesToUpdate })
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('gvb_user');
+          localStorage.removeItem('gvb_token');
+          router.push('/login');
+          throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+        }
+        throw new Error('Error al guardar resultados en masa.');
+      }
+
+      setToast({ message: `¡Se guardaron ${matchesToUpdate.length} resultados oficiales y se recalcularon los puntos!`, type: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['fixtures'] });
       await queryClient.invalidateQueries({ queryKey: ['standings'] });
       refetchMatches();
@@ -372,7 +455,7 @@ export default function AdminPage() {
         {/* TOAST SYSTEM */}
         {toast && (
           <div className={cn(
-            "fixed bottom-5 right-5 z-50 p-4 border-2 border-[#111111] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex items-start gap-3 text-sm max-w-md animate-bounce",
+            "fixed bottom-3 left-3 right-3 sm:left-auto sm:right-5 sm:bottom-5 z-50 p-4 border-2 border-[#111111] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex items-start gap-3 text-sm sm:max-w-md animate-bounce",
             toast.type === 'success' ? 'bg-[#13315C] text-[#F4F1EA] border-green-500' : 'bg-red-950/90 text-[#F4F1EA] border-red-500'
           )}>
             {toast.type === 'success' ? <CheckCircle size={18} className="text-green-400 shrink-0 mt-0.5" /> : <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />}
@@ -412,41 +495,41 @@ export default function AdminPage() {
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex border-b-2 border-[#13315C] gap-2">
+        <div className="flex border-b-2 border-[#13315C] gap-1 sm:gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('matches')}
             className={cn(
-              "px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center gap-2",
+              "flex-1 sm:flex-none px-3 sm:px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap",
               activeTab === 'matches'
                 ? "bg-[#13315C] border-b-2 border-b-[#13315C] text-[#B8860B]"
                 : "bg-[#0B2545] border-transparent text-gray-400 hover:text-white"
             )}
           >
-            <Calendar size={16} /> Cargar Resultados
+            <Calendar size={16} /> <span className="hidden sm:inline">Cargar </span>Resultados
           </button>
           
           <button
             onClick={() => setActiveTab('predictions')}
             className={cn(
-              "px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center gap-2",
+              "flex-1 sm:flex-none px-3 sm:px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap",
               activeTab === 'predictions'
                 ? "bg-[#13315C] border-b-2 border-b-[#13315C] text-[#B8860B]"
                 : "bg-[#0B2545] border-transparent text-gray-400 hover:text-white"
             )}
           >
-            <UserCheck size={16} /> Pronósticos de Usuarios
+            <UserCheck size={16} /> <span className="hidden sm:inline">Pronósticos</span><span className="sm:hidden">Pronóst.</span>
           </button>
 
           <button
             onClick={() => setActiveTab('tournament')}
             className={cn(
-              "px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center gap-2",
+              "flex-1 sm:flex-none px-3 sm:px-6 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-widest border-t-2 border-x-2 border-[#111111] -mb-0.5 transition-colors flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap",
               activeTab === 'tournament'
                 ? "bg-[#13315C] border-b-2 border-b-[#13315C] text-[#B8860B]"
                 : "bg-[#0B2545] border-transparent text-gray-400 hover:text-white"
             )}
           >
-            <Trophy size={16} /> Resultados del Torneo
+            <Trophy size={16} /> Torneo
           </button>
         </div>
 
@@ -474,22 +557,33 @@ export default function AdminPage() {
                   Fase Eliminatoria
                 </button>
               </div>
+
+              {/* BIG BULK SAVE BUTTON */}
+              <button
+                onClick={handleSaveAllResults}
+                disabled={isLoadingAction}
+                className="w-full sm:w-auto bg-[#B8860B] text-[#111111] px-6 py-2.5 text-xs font-bold uppercase tracking-widest border border-[#111111] shadow-[3px_3px_0px_0px_#111111] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#111111] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Save size={14} /> Guardar Todos los Resultados de esta Vista
+              </button>
             </div>
 
             {activeStage === 'groups' && (
-              <div className="flex flex-wrap gap-1.5 bg-[#13315C]/40 p-3 border border-[#13315C]">
-                {GROUPS.map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setSelectedGroup(g)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all",
-                      selectedGroup === g ? "bg-[#111111] border-[#111111] text-white" : "bg-[#0B2545] border-[#13315C] text-gray-400 hover:text-white"
-                    )}
-                  >
-                    Grupo {g}
-                  </button>
-                ))}
+              <div className="overflow-x-auto">
+                <div className="flex gap-1.5 bg-[#13315C]/40 p-3 border border-[#13315C] min-w-max">
+                  {GROUPS.map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setSelectedGroup(g)}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all whitespace-nowrap",
+                        selectedGroup === g ? "bg-[#111111] border-[#111111] text-white" : "bg-[#0B2545] border-[#13315C] text-gray-400 hover:text-white"
+                      )}
+                    >
+                      Grupo {g}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -527,6 +621,13 @@ export default function AdminPage() {
                           <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                             {match.home.name}
                           </span>
+                          <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
+                            {match.home.logo ? (
+                              <img src={match.home.logo} alt={match.home.name} className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              match.home.name.substring(0, 3).toUpperCase()
+                            )}
+                          </div>
                         </div>
 
                         {/* Result Inputs */}
@@ -550,6 +651,13 @@ export default function AdminPage() {
 
                         {/* Away Team */}
                         <div className="flex-1 flex items-center gap-3 justify-start text-left">
+                          <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
+                            {match.away.logo ? (
+                              <img src={match.away.logo} alt={match.away.name} className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              match.away.name.substring(0, 3).toUpperCase()
+                            )}
+                          </div>
                           <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                             {match.away.name}
                           </span>
@@ -624,8 +732,39 @@ export default function AdminPage() {
                       </button>
                     </div>
 
+                    {/* Filter buttons for user predictions */}
+                    <div className="flex flex-wrap gap-2 border-b border-gray-800 pb-3">
+                      <button
+                        onClick={() => setPredFilter('all')}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors border",
+                          predFilter === 'all' ? "bg-[#B8860B] text-[#111111] border-[#B8860B]" : "bg-[#0B2545] text-gray-400 border-gray-700 hover:text-white"
+                        )}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        onClick={() => setPredFilter('groups')}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors border",
+                          predFilter === 'groups' ? "bg-[#B8860B] text-[#111111] border-[#B8860B]" : "bg-[#0B2545] text-gray-400 border-gray-700 hover:text-white"
+                        )}
+                      >
+                        Fase de Grupos
+                      </button>
+                      <button
+                        onClick={() => setPredFilter('knockouts')}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors border",
+                          predFilter === 'knockouts' ? "bg-[#B8860B] text-[#111111] border-[#B8860B]" : "bg-[#0B2545] text-gray-400 border-gray-700 hover:text-white"
+                        )}
+                      >
+                        Fase Eliminatoria
+                      </button>
+                    </div>
+
                     <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4 divide-y divide-gray-800">
-                      {allMatches.map((match, idx) => {
+                      {filteredPredMatches.map((match, idx) => {
                         const pred = userPredictions[match.id] || { homeScore: '', awayScore: '' };
                         return (
                           <div key={match.id} className={cn("pt-4 flex items-center justify-between gap-4", idx === 0 && "pt-0 border-t-0")}>

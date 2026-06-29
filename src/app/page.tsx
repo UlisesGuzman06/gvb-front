@@ -10,6 +10,8 @@ import { ParticipantCardSkeleton } from '@/components/ui/Skeletons';
 
 import { useStandings } from '@/hooks/useStandings';
 import { useFootball } from '@/providers/FootballProvider';
+import { useMatches } from '@/hooks/useMatches';
+import { KnockoutBracket } from '@/components/ui/KnockoutBracket';
 
 import { theme } from '@/styles/theme';
 import { cn } from '@/lib/utils';
@@ -19,6 +21,18 @@ import { Trophy, Shield, X, ChevronRight, Loader2, Users } from 'lucide-react';
 export default function Home() {
   const [selectedGroup, setSelectedGroup] = useState<string>('A');
   const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  const { data: allMatches = [], isLoading: isLoadingMatches } = useMatches();
+
+  const matchesMap = React.useMemo(() => {
+    const map = new Map<number, any>();
+    allMatches.forEach((m: any) => {
+      if (m.num !== null && m.num !== undefined) {
+        map.set(Number(m.num), m);
+      }
+    });
+    return map;
+  }, [allMatches]);
 
   const [selectedTeamData, setSelectedTeamData] = useState<{
     id: number;
@@ -127,21 +141,23 @@ export default function Home() {
               <SectionTitle subtitle="Tabla de posiciones oficial del torneo">Clasificación</SectionTitle>
               
               {/* Group Selector Tabs */}
-              <div className="flex flex-wrap gap-1.5 mb-6">
-                {GROUPS.map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setSelectedGroup(g)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors",
-                      selectedGroup === g 
-                        ? "bg-[#111111] border-[#111111] text-white" 
-                        : "bg-[#F4F1EA] border-[#CCCCCC] text-[#111111] hover:border-[#111111]"
-                    )}
-                  >
-                    Grupo {g}
-                  </button>
-                ))}
+              <div className="overflow-x-auto mb-6">
+                <div className="flex gap-1.5 min-w-max">
+                  {GROUPS.map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setSelectedGroup(g)}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors whitespace-nowrap",
+                        selectedGroup === g 
+                          ? "bg-[#111111] border-[#111111] text-white" 
+                          : "bg-[#F4F1EA] border-[#CCCCCC] text-[#111111] hover:border-[#111111]"
+                      )}
+                    >
+                      Grupo {g}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {isLoadingStandings ? (
@@ -156,8 +172,8 @@ export default function Home() {
                   className="bg-red-50 border-red-500 text-red-900"
                 />
               ) : standings.length > 0 ? (
-                <div className="border border-[#111111] bg-white overflow-hidden shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
-                  <table className="w-full text-left border-collapse text-xs md:text-sm">
+                <div className="border border-[#111111] bg-white overflow-x-auto shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
+                  <table className="w-full min-w-[380px] text-left border-collapse text-xs md:text-sm">
                     <thead>
                       <tr className="bg-[#111111] text-white font-bold uppercase tracking-wider text-[10px] md:text-xs">
                         <th className="py-3 px-3 text-center w-10">Pos</th>
@@ -218,6 +234,13 @@ export default function Home() {
               )}
             </div>
           </div>
+
+          {/* BRACKET SECTION */}
+          <div className="w-full mt-20">
+            <SectionTitle subtitle="Llave eliminatoria del mundial en tiempo real">Cuadro de Eliminatorias</SectionTitle>
+            <KnockoutBracket matchesMap={matchesMap} isLoading={isLoadingMatches} />
+          </div>
+
         </div>
       </section>
 
@@ -281,8 +304,8 @@ export default function Home() {
 
       {/* MODAL DE DETALLE DE EQUIPO Y PLANTEL COMPLETO */}
       {selectedTeamData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-3xl bg-[#0B2545] border-4 border-[#B8860B] shadow-[8px_8px_0px_0px_rgba(17,17,17,1)] flex flex-col max-h-[90vh] text-white">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full sm:max-w-3xl bg-[#0B2545] border-4 border-[#B8860B] shadow-[8px_8px_0px_0px_rgba(17,17,17,1)] flex flex-col max-h-[92vh] sm:max-h-[90vh] text-white">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between p-6 border-b border-[#13315C] bg-[#13315C]">

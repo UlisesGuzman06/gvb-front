@@ -259,7 +259,7 @@ export default function GrupoPage() {
             >
               <ArrowLeft size={16} /> Volver a Mi Prode
             </Link>
-            <h1 className={cn("text-5xl sm:text-6xl text-white flex items-center gap-3", theme.typography.heading)} id="main-title">
+            <h1 className={cn("text-4xl sm:text-5xl lg:text-6xl text-white flex items-center gap-3", theme.typography.heading)} id="main-title">
               Grupo <span className="text-[#B8860B]">los Pibes</span>
             </h1>
             <p className="text-gray-400 mt-2 text-base max-w-2xl font-inter">
@@ -290,8 +290,8 @@ export default function GrupoPage() {
               <span className="text-xs font-bold font-mono text-[#B8860B]">RANKING GENERAL</span>
             </div>
 
-            <div className="border border-[#111111] bg-[#13315C] shadow-[6px_6px_0px_0px_rgba(17,17,17,1)] overflow-hidden">
-              <table className="w-full text-left border-collapse text-xs md:text-sm">
+            <div className="border border-[#111111] bg-[#13315C] shadow-[6px_6px_0px_0px_rgba(17,17,17,1)] overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[400px] text-left border-collapse text-xs md:text-sm">
                 <thead>
                   <tr className="bg-[#111111] text-white font-bold uppercase tracking-wider text-[10px] md:text-xs">
                     <th className="py-3 px-3 text-center w-12">Pos</th>
@@ -322,7 +322,7 @@ export default function GrupoPage() {
                         </td>
                         <td className="py-3.5 px-3">
                           <div className="flex items-center gap-2">
-                            <span className="uppercase truncate max-w-[150px] sm:max-w-none">
+                          <span className="uppercase truncate max-w-[90px] sm:max-w-[150px] md:max-w-none block">
                               {participant.name}
                             </span>
                             {participant.isCurrentUser && (
@@ -565,21 +565,23 @@ export default function GrupoPage() {
 
                             {/* GROUP SELECTOR */}
                             {activeStage === 'groups' && (
-                              <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto pt-1">
-                                {GROUPS.map(g => (
-                                  <button
-                                    key={g}
-                                    onClick={() => setSelectedGroup(g)}
-                                    className={cn(
-                                      "px-1.5 py-0.5 text-[9px] font-bold uppercase border transition-all",
-                                      selectedGroup === g
-                                        ? "bg-[#111111] border-[#111111] text-white"
-                                        : "bg-[#13315C] border-[#111111] text-gray-400 hover:text-white"
-                                    )}
-                                  >
-                                    G{g}
-                                  </button>
-                                ))}
+                              <div className="overflow-x-auto">
+                                <div className="flex gap-1 pt-1 min-w-max">
+                                  {GROUPS.map(g => (
+                                    <button
+                                      key={g}
+                                      onClick={() => setSelectedGroup(g)}
+                                      className={cn(
+                                        "px-1.5 py-0.5 text-[9px] font-bold uppercase border transition-all whitespace-nowrap",
+                                        selectedGroup === g
+                                          ? "bg-[#111111] border-[#111111] text-white"
+                                          : "bg-[#13315C] border-[#111111] text-gray-400 hover:text-white"
+                                      )}
+                                    >
+                                      G{g}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
