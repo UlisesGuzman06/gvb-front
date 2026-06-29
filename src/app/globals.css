@@ -72,11 +72,20 @@ textarea {
   }
 }
 
-/* Hide scrollbar utility */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Custom thin scrollbar utility */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
 }
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #E8E2D6;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #B8860B;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #111111;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #B8860B #E8E2D6;
 }

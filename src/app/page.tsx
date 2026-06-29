@@ -142,14 +142,14 @@ export default function Home() {
               <SectionTitle subtitle="Tabla de posiciones oficial del torneo">Clasificación</SectionTitle>
               
               {/* Group Selector Tabs */}
-              <div className="overflow-x-auto no-scrollbar mb-6">
-                <div className="flex gap-1.5 min-w-max">
+              <div className="overflow-x-auto custom-scrollbar mb-6 pb-2">
+                <div className="flex gap-2 min-w-max">
                   {GROUPS.map(g => (
                     <button
                       key={g}
                       onClick={() => setSelectedGroup(g)}
                       className={cn(
-                        "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors whitespace-nowrap",
+                        "px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-colors whitespace-nowrap",
                         selectedGroup === g 
                           ? "bg-[#111111] border-[#111111] text-white" 
                           : "bg-[#F4F1EA] border-[#CCCCCC] text-[#111111] hover:border-[#111111]"
