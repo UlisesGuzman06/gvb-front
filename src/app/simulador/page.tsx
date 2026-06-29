@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { CirclePoints } from '@/components/ui/CirclePoints';
+import dynamic from 'next/dynamic';
 import { useMatches } from '@/hooks/useMatches';
+
+const CirclePoints = dynamic(
+  () => import('@/components/ui/CirclePoints').then((mod) => mod.CirclePoints),
+  { ssr: false }
+);
 import { 
   type DrawPosition, 
   type Team, 
