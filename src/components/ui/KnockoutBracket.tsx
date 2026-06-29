@@ -192,7 +192,7 @@ function BracketBranch({ node, matchesMap, depth }: BracketBranchProps) {
 // Sub-component for rendering a match card in the knockout bracket
 function BracketMatchCard({ matchNum, matchesMap }: { matchNum: number; matchesMap: Map<number, any> }) {
   // Support both number and string keys in matchesMap lookup for robustness
-  const match = matchesMap.get(matchNum) || matchesMap.get(String(matchNum));
+  const match = matchesMap.get(matchNum) || (matchesMap as Map<any, any>).get(String(matchNum));
   const cardWidth = "w-[180px]";
 
   // Placeholder card when match is not in DB or map yet
