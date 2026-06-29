@@ -304,6 +304,18 @@ button.circle-points__point {
   visibility: visible;
 }
 
+/* Force round shape on flags and indicators inside the circular bracket component, overriding global reset */
+.circle-points .circle-points__point,
+.circle-points .circle-points__point--team,
+.circle-points .circle-points__flag-button,
+.circle-points .circle-points__flag,
+.circle-points .circle-points__dot-marker,
+.circle-points .circle-points__flag-stack,
+.circle-points .circle-points__traveling-flag,
+.circle-points .circle-points__traveling-flag .circle-points__flag {
+  border-radius: 50% !important;
+}
+
 @media (max-width: 639px) {
   .circle-points {
     --flag-size: 32px;

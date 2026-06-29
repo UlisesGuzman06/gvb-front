@@ -1,9 +1,22 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { CirclePoints } from '@/components/ui/CirclePoints';
-import { type DrawPosition, type Team } from '@/lib/drawTree';
-import { RotateCcw } from 'lucide-react';
+import { 
+  type DrawPosition, 
+  type Team, 
+  deriveSlotTeams, 
+  getPairWinner, 
+  slotKey, 
+  pairKey, 
+  getPairIndex, 
+  selectPairWinner, 
+  canSelectPair,
+  isPlayableRing,
+  type PlayableRing
+} from '@/lib/drawTree';
+import { TeamFlag } from '@/components/ui/TeamFlag';
+import { RotateCcw, Trophy } from 'lucide-react';
 
 const TEAMS_2026 = [
   { isoCode: "BRA", name: "Brasil" },
@@ -51,46 +64,243 @@ const DRAW_POSITIONS: DrawPosition[] = TEAMS_2026.map((team, index) => {
   };
 });
 
+// Definición de las rondas de la fase de knockout
+type RoundDef = {
+  name: string;
+  ringIndex: PlayableRing;
+  matchCount: number;
+};
+
+const ROUNDS: RoundDef[] = [
+  { name: '16avos de Final', ringIndex: 0, matchCount: 16 },
+  { name: 'Octavos de Final', ringIndex: 2, matchCount: 8 },
+  { name: 'Cuartos de Final', ringIndex: 3, matchCount: 4 },
+  { name: 'Semifinal', ringIndex: 4, matchCount: 2 },
+  { name: 'Final', ringIndex: 5, matchCount: 1 },
+];
+
 export default function SimuladorPage() {
   const [pairWinners, setPairWinners] = useState<Record<string, Team>>({});
   const [drawKey, setDrawKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<PlayableRing>(0);
 
   const handleReset = useCallback(() => {
     setPairWinners({});
     setDrawKey((current) => current + 1);
   }, []);
 
+  // Obtener todos los equipos en sus respectivas posiciones de forma reactiva
+  const slotTeams = useMemo(() => {
+    return deriveSlotTeams(DRAW_POSITIONS, pairWinners);
+  }, [pairWinners]);
+
+  // Manejar el click sobre un equipo en la tabla de la derecha para avanzar
+  const handleTeamClick = useCallback((ringIndex: PlayableRing, slotIndex: number, team: Team) => {
+    const pairIndex = getPairIndex(slotIndex);
+    const blockedSlots = new Set<string>(); // en este panel lateral no bloqueamos por animación para que sea inmediato
+    
+    if (canSelectPair(ringIndex, pairIndex, slotTeams, blockedSlots)) {
+      setPairWinners((current) =>
+        selectPairWinner(DRAW_POSITIONS, current, ringIndex, pairIndex, team)
+      );
+    }
+  }, [slotTeams]);
+
+  // Campeón del torneo
+  const champion = useMemo(() => {
+    return getPairWinner(5, 0, pairWinners);
+  }, [pairWinners]);
+
   return (
     <div className="min-h-screen bg-[#F4F1EA] pt-28 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Encabezado */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="font-bebas text-5xl sm:text-6xl tracking-widest text-[#0B2545]">
               SIMULADOR DE KNOCKOUT
             </h1>
             <p className="text-[#5A5A5A] text-sm font-medium mt-1">
-              Hacé clic sobre las banderas de cada par para seleccionar el ganador y avanzar en la llave.
+              Selecciona los ganadores en el círculo o en la tabla de la derecha para armar tu fixture del Mundial 2026.
             </p>
           </div>
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 border border-[#0B2545] text-[#0B2545] px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#0B2545] hover:text-white transition-colors"
+            className="flex items-center gap-2 border-2 border-[#0B2545] text-[#0B2545] px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#0B2545] hover:text-white transition-transform active:scale-95 duration-100"
           >
             <RotateCcw size={14} />
             Reiniciar
           </button>
         </div>
 
-        <div className="bg-white border border-[#E8E2D6] p-6 md:p-12 shadow-[4px_4px_0px_0px_rgba(11,37,69,0.15)] flex justify-center items-center overflow-x-auto">
-          <div className="min-w-[650px] w-full max-w-[900px] aspect-square flex justify-center items-center">
-            <CirclePoints
-              key={drawKey}
-              positions={DRAW_POSITIONS}
-              pairWinners={pairWinners}
-              onPairWinnersChange={setPairWinners}
-            />
+        {/* Layout de dos columnas */}
+        <div className="flex flex-col xl:flex-row gap-8 items-start">
+          
+          {/* Columna Izquierda: Simulador Circular */}
+          <div className="w-full xl:w-2/3 bg-white border border-[#E8E2D6] p-6 md:p-10 shadow-[4px_4px_0px_0px_rgba(11,37,69,0.15)] flex justify-center items-center overflow-x-auto min-h-[550px]">
+            <div className="min-w-[550px] w-full max-w-[750px] aspect-square flex justify-center items-center">
+              <CirclePoints
+                key={drawKey}
+                positions={DRAW_POSITIONS}
+                pairWinners={pairWinners}
+                onPairWinnersChange={setPairWinners}
+              />
+            </div>
           </div>
+
+          {/* Columna Derecha: Tablas de Rondas */}
+          <div className="w-full xl:w-1/3 flex flex-col gap-6 self-stretch">
+            
+            {/* Tarjeta del Campeón */}
+            <div className="bg-[#0B2545] border-b-4 border-[#B8860B] p-5 shadow-[4px_4px_0px_0px_#111] text-white">
+              <div className="flex items-center gap-2 mb-2 text-[#B8860B]">
+                <Trophy size={18} />
+                <span className="text-xs font-bold uppercase tracking-widest">
+                  Campeón del Mundo 2026
+                </span>
+              </div>
+              {champion ? (
+                <div className="flex items-center gap-3 mt-1">
+                  <TeamFlag team={champion} className="w-12 h-12 object-cover border-2 border-[#B8860B] rounded-full" />
+                  <div>
+                    <h2 className="font-bebas text-3xl tracking-widest text-white uppercase">{champion.name}</h2>
+                    <p className="text-[10px] text-[#B8860B] font-bold uppercase tracking-widest">¡Tu selección para el título!</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 mt-1 opacity-50">
+                  <div className="w-12 h-12 rounded-full border-2 border-dashed border-white/50 flex items-center justify-center font-bold text-xl">?</div>
+                  <div>
+                    <h2 className="font-bebas text-3xl tracking-widest text-white/50 uppercase">SIN DEFINIR</h2>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Completa los cruces para elegir al campeón</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Panel de Control de Rondas (Tabs) */}
+            <div className="bg-white border border-[#E8E2D6] p-4 shadow-[4px_4px_0px_0px_rgba(11,37,69,0.05)] flex-1 flex flex-col min-h-[500px]">
+              
+              {/* Barra de pestañas */}
+              <div className="flex border-b border-[#E8E2D6] overflow-x-auto pb-1 no-scrollbar gap-1 mb-4">
+                {ROUNDS.map((r) => (
+                  <button
+                    key={r.ringIndex}
+                    onClick={() => setActiveTab(r.ringIndex)}
+                    className={`flex-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider py-2 text-center border-b-2 transition-all whitespace-nowrap px-2 ${
+                      activeTab === r.ringIndex
+                        ? 'border-[#B8860B] text-[#0B2545]'
+                        : 'border-transparent text-[#5A5A5A] hover:text-[#0B2545]'
+                    }`}
+                  >
+                    {r.name.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Lista de partidos de la ronda activa */}
+              <div className="flex-1 overflow-y-auto max-h-[500px] pr-1 space-y-3">
+                {ROUNDS.map((round) => {
+                  if (activeTab !== round.ringIndex) return null;
+
+                  return Array.from({ length: round.matchCount }, (_, matchIdx) => {
+                    const slotA = matchIdx * 2;
+                    const slotB = matchIdx * 2 + 1;
+
+                    const teamA = slotTeams[slotKey(round.ringIndex, slotA)];
+                    const teamB = slotTeams[round.ringIndex === 5 ? slotKey(5, 1) : slotKey(round.ringIndex, slotB)]; 
+                    // Nota: para la gran final (ring 5), el contrincante es slot 5-1
+
+                    const winner = getPairWinner(round.ringIndex, matchIdx, pairWinners);
+
+                    const canVote = teamA && teamB;
+
+                    return (
+                      <div 
+                        key={`${round.ringIndex}-${matchIdx}`}
+                        className={`border p-3 transition-all ${
+                          canVote 
+                            ? 'border-[#E8E2D6] bg-[#FDFDFD]' 
+                            : 'border-[#F0EDE6] bg-[#FAF8F5] opacity-60'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-1.5 text-[9px] text-[#5A5A5A] font-bold uppercase tracking-wider">
+                          <span>Partido {matchIdx + 1}</span>
+                          {!canVote && <span className="text-[#B8860B]">Esperando clasificados</span>}
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          
+                          {/* Equipo Local / Superior */}
+                          <button
+                            disabled={!canVote}
+                            onClick={() => teamA && handleTeamClick(round.ringIndex, slotA, teamA)}
+                            className={`flex items-center justify-between p-2 text-left border transition-all text-xs ${
+                              teamA && winner && winner.isoCode === teamA.isoCode
+                                ? 'bg-[#0B2545] border-[#0B2545] text-white font-bold'
+                                : 'bg-white border-[#E8E2D6] text-[#111] hover:border-[#B8860B]'
+                            } ${!canVote ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              {teamA ? (
+                                <>
+                                  <TeamFlag team={teamA} className="w-5 h-5 object-cover rounded-full" />
+                                  <span className="truncate">{teamA.name}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="w-5 h-5 rounded-full border border-dashed border-[#AAA] bg-[#F0EDE6] flex items-center justify-center text-[10px] text-[#888] font-bold">?</div>
+                                  <span className="text-[#888] italic">Por definir</span>
+                                </>
+                              )}
+                            </div>
+                            {teamA && winner && winner.isoCode === teamA.isoCode && (
+                              <span className="text-[10px] bg-[#B8860B] text-[#111] px-1.5 font-bold rounded-sm">W</span>
+                            )}
+                          </button>
+
+                          {/* Equipo Visitante / Inferior */}
+                          <button
+                            disabled={!canVote}
+                            onClick={() => teamB && handleTeamClick(round.ringIndex, slotB, teamB)}
+                            className={`flex items-center justify-between p-2 text-left border transition-all text-xs ${
+                              teamB && winner && winner.isoCode === teamB.isoCode
+                                ? 'bg-[#0B2545] border-[#0B2545] text-white font-bold'
+                                : 'bg-white border-[#E8E2D6] text-[#111] hover:border-[#B8860B]'
+                            } ${!canVote ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              {teamB ? (
+                                <>
+                                  <TeamFlag team={teamB} className="w-5 h-5 object-cover rounded-full" />
+                                  <span className="truncate">{teamB.name}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="w-5 h-5 rounded-full border border-dashed border-[#AAA] bg-[#F0EDE6] flex items-center justify-center text-[10px] text-[#888] font-bold">?</div>
+                                  <span className="text-[#888] italic">Por definir</span>
+                                </>
+                              )}
+                            </div>
+                            {teamB && winner && winner.isoCode === teamB.isoCode && (
+                              <span className="text-[10px] bg-[#B8860B] text-[#111] px-1.5 font-bold rounded-sm">W</span>
+                            )}
+                          </button>
+
+                        </div>
+                      </div>
+                    );
+                  });
+                })}
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
+
       </div>
     </div>
   );
