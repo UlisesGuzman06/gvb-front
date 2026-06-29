@@ -142,7 +142,7 @@ export default function Home() {
               <SectionTitle subtitle="Tabla de posiciones oficial del torneo">Clasificación</SectionTitle>
               
               {/* Group Selector Tabs */}
-              <div className="overflow-x-auto custom-scrollbar mb-6 pb-2">
+              <div className="overflow-x-auto no-scrollbar mb-6">
                 <div className="flex gap-2 min-w-max">
                   {GROUPS.map(g => (
                     <button

@@ -72,20 +72,11 @@ textarea {
   }
 }
 
-/* Custom thin scrollbar utility */
-.custom-scrollbar::-webkit-scrollbar {
-  height: 4px;
+/* Hide scrollbar but keep scroll functional */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #E8E2D6;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #B8860B;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #111111;
-}
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #B8860B #E8E2D6;
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
