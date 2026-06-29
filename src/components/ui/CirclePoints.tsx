@@ -21,6 +21,7 @@ import {
   pairKey,
   selectPairWinner,
   slotKey,
+  getPairIndices,
   type DrawPosition,
   type PlayableRing,
   type Team,
@@ -352,6 +353,8 @@ export function CirclePoints({
 
     return blocked;
   }, [pendingSlots, advancingFromSlots]);
+  const prevSlotTeamsRef = useRef<Record<string, Team>>({});
+
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) {
@@ -378,6 +381,68 @@ export function CirclePoints({
     () => buildRings(ringRadiusOffset).map((ring) => ring.points),
     [ringRadiusOffset],
   );
+
+  useEffect(() => {
+    const prev = prevSlotTeamsRef.current;
+    const next = slotTeams;
+    const PREV_RING: Record<number, PlayableRing> = { 2: 0, 3: 2, 4: 3, 5: 4 };
+
+    for (const [targetKey, newTeam] of Object.entries(next)) {
+      const oldTeam = prev[targetKey];
+      
+      // Si la posición tiene un equipo nuevo que antes no estaba
+      if (newTeam && (!oldTeam || oldTeam.isoCode !== newTeam.isoCode)) {
+        const match = targetKey.match(/^(\d+)-(\d+)$/);
+        if (match) {
+          const ringIndex = Number(match[1]); // 2, 3, 4, 5
+          const pairIndex = Number(match[2]);
+          const prevRing = PREV_RING[ringIndex];
+
+          if (prevRing !== undefined) {
+            const [slotA, slotB] = getPairIndices(prevRing, pairIndex);
+            
+            // Buscamos cuál de los dos slots originales contenía al ganador
+            const keyA = slotKey(prevRing, slotA);
+            const keyB = slotKey(prevRing, slotB);
+            
+            // Comparamos usando el estado anterior (o el actual)
+            const sourceSlotIndex = (prev[keyA]?.isoCode === newTeam.isoCode || next[keyA]?.isoCode === newTeam.isoCode)
+              ? slotA 
+              : ((prev[keyB]?.isoCode === newTeam.isoCode || next[keyB]?.isoCode === newTeam.isoCode) ? slotB : null);
+
+            if (sourceSlotIndex !== null) {
+              const sourceSlotKey = slotKey(prevRing, sourceSlotIndex);
+              const pathD = buildAdvancePath({
+                ringIndex: prevRing,
+                winnerSlotIndex: sourceSlotIndex,
+                ringPoints: ringGeometry,
+                getRingRadius: (r) => getRingRadius(r, ringRadiusOffset),
+                getPairArcMidpoint: (p, r) => getPairArcMidpoint(p, r, ringRadiusOffset),
+              });
+
+              if (pathD) {
+                const startPosition = ringGeometry[prevRing]?.[sourceSlotIndex];
+                if (startPosition) {
+                  setAdvancingTeams((current) => [
+                    ...current.filter((adv) => adv.targetSlotKey !== targetKey),
+                    {
+                      id: `${targetKey}-${newTeam.isoCode}-${Date.now()}`,
+                      team: newTeam,
+                      pathD,
+                      startPosition,
+                      sourceSlotKey,
+                      targetSlotKey: targetKey,
+                    }
+                  ]);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    prevSlotTeamsRef.current = { ...next };
+  }, [slotTeams, ringGeometry, ringRadiusOffset]);
   const pendingTargetPoints = useMemo(
     () =>
       advancingTeams.flatMap((advance) => {
@@ -507,40 +572,6 @@ export function CirclePoints({
     onPairWinnersChange(
       selectPairWinner(positions, pairWinners, ringIndex, pairIndex, team),
     );
-
-    const nextRing = NEXT_RING[ringIndex];
-    if (nextRing === null) {
-      return;
-    }
-
-    const targetSlotKey = slotKey(nextRing, pairIndex);
-    const sourceSlotKey = slotKey(ringIndex, slotIndex);
-    const pathD = buildAdvancePath({
-      ringIndex,
-      winnerSlotIndex: slotIndex,
-      ringPoints: ringGeometry,
-      getRingRadius: (ringIndex) => getRingRadius(ringIndex, ringRadiusOffset),
-      getPairArcMidpoint: (pairIndex, ringIndex) =>
-        getPairArcMidpoint(pairIndex, ringIndex, ringRadiusOffset),
-    });
-
-    if (!pathD) {
-      return;
-    }
-
-    const startPosition = ringGeometry[ringIndex][slotIndex];
-
-    setAdvancingTeams((current) => [
-      ...current.filter((advance) => advance.targetSlotKey !== targetSlotKey),
-      {
-        id: `${targetSlotKey}-${team.isoCode}-${Date.now()}`,
-        team,
-        pathD,
-        startPosition,
-        sourceSlotKey,
-        targetSlotKey,
-      },
-    ]);
   }
 
   function renderPoint(ringIndex: number, point: Point, slotIndex: number) {

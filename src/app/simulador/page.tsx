@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { CirclePoints } from '@/components/ui/CirclePoints';
 import { useMatches } from '@/hooks/useMatches';
 import { 
@@ -67,13 +67,29 @@ export default function SimuladorPage() {
   const [drawKey, setDrawKey] = useState(0);
   const [hasLoadedReales, setHasLoadedReales] = useState(false);
 
+  // Referencia para cancelar la secuencia aleatoria activa si se vuelve a clickear o se reinicia
+  const randomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Hook de React-Query para obtener la base de datos de partidos reales
   const { data: allMatches = [], isLoading: isLoadingMatches } = useMatches();
 
+  const cancelRandomSequence = useCallback(() => {
+    if (randomTimeoutRef.current) {
+      clearTimeout(randomTimeoutRef.current);
+      randomTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Limpiar timer al desmontar el componente
+  useEffect(() => {
+    return () => cancelRandomSequence();
+  }, [cancelRandomSequence]);
+
   const handleReset = useCallback(() => {
+    cancelRandomSequence();
     setPairWinners({});
     setDrawKey((current) => current + 1);
-  }, []);
+  }, [cancelRandomSequence]);
 
   // Lógica inteligente para cargar los resultados oficiales/reales
   const cargarResultadosReales = useCallback((fixtures: any[]) => {
@@ -102,14 +118,19 @@ export default function SimuladorPage() {
         );
 
         if (realMatch) {
+          const homeScore = realMatch.homeScore ?? 0;
+          const awayScore = realMatch.awayScore ?? 0;
           let winnerTeam: Team | null = null;
           
-          if (realMatch.homeScore !== realMatch.awayScore) {
-            winnerTeam = realMatch.homeScore > realMatch.awayScore
+          if (homeScore !== awayScore) {
+            winnerTeam = homeScore > awayScore
               ? (realMatch.home?.name === teamA.name ? teamA : teamB)
               : (realMatch.away?.name === teamA.name ? teamA : teamB);
           } else {
-            const matchNum = realMatch.num !== undefined && realMatch.num !== null ? Number(realMatch.num) : Number(realMatch.id);
+            const matchNum = (realMatch as any).num !== undefined && (realMatch as any).num !== null 
+              ? Number((realMatch as any).num) 
+              : Number(realMatch.id);
+              
             const teamAAdvanced = fixtures.some((f: any) => {
               const fNum = f.num !== undefined && f.num !== null ? Number(f.num) : Number(f.id);
               return fNum > matchNum && (f.home?.name === teamA.name || f.away?.name === teamA.name);
@@ -128,36 +149,111 @@ export default function SimuladorPage() {
     setDrawKey((current) => current + 1);
   }, []);
 
-  // Lógica para completar aleatoriamente el bracket
+  // Lógica para completar aleatoriamente el bracket de forma progresiva con animaciones
   const handleRandom = useCallback(() => {
-    setPairWinners((current) => {
-      let newWinners = { ...current };
-      const playableRings: PlayableRing[] = [0, 2, 3, 4, 5];
+    cancelRandomSequence();
 
-      for (const ringIndex of playableRings) {
-        const currentSlotTeams = deriveSlotTeams(DRAW_POSITIONS, newWinners);
-        const pairCount = getPairCount(ringIndex);
+    // 1. Reestablecemos el bracket únicamente a los partidos reales finalizados oficiales (para que siempre cambie al re-clickear)
+    let baseWinners: Record<string, Team> = {};
+    const playableRings: PlayableRing[] = [0, 2, 3, 4, 5];
 
-        for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
-          const key = pairKey(ringIndex, pairIndex);
+    for (const ringIndex of playableRings) {
+      const currentSlotTeams = deriveSlotTeams(DRAW_POSITIONS, baseWinners);
+      const pairCount = getPairCount(ringIndex);
+
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
+        const [slotA, slotB] = getPairIndices(ringIndex, pairIndex);
+        const teamA = currentSlotTeams[slotKey(ringIndex, slotA)];
+        const teamB = currentSlotTeams[slotKey(ringIndex, slotB)];
+
+        if (!teamA || !teamB) continue;
+
+        const realMatch = allMatches.find((f: any) => 
+          f.status === 'FINISHED' && 
+          f.homeScore !== null && 
+          f.awayScore !== null && 
+          (
+            (f.home?.name === teamA.name && f.away?.name === teamB.name) ||
+            (f.home?.name === teamB.name && f.away?.name === teamA.name)
+          )
+        );
+
+        if (realMatch) {
+          const homeScore = realMatch.homeScore ?? 0;
+          const awayScore = realMatch.awayScore ?? 0;
+          let winnerTeam: Team | null = null;
           
-          // Si el par no está decidido, elegimos uno aleatoriamente
-          if (!newWinners[key]) {
-            const [slotA, slotB] = getPairIndices(ringIndex, pairIndex);
-            const teamA = currentSlotTeams[slotKey(ringIndex, slotA)];
-            const teamB = currentSlotTeams[slotKey(ringIndex, slotB)];
+          if (homeScore !== awayScore) {
+            winnerTeam = homeScore > awayScore
+              ? (realMatch.home?.name === teamA.name ? teamA : teamB)
+              : (realMatch.away?.name === teamA.name ? teamA : teamB);
+          } else {
+            const matchNum = (realMatch as any).num !== undefined && (realMatch as any).num !== null 
+              ? Number((realMatch as any).num) 
+              : Number(realMatch.id);
+              
+            const teamAAdvanced = allMatches.some((f: any) => {
+              const fNum = f.num !== undefined && f.num !== null ? Number(f.num) : Number(f.id);
+              return fNum > matchNum && (f.home?.name === teamA.name || f.away?.name === teamA.name);
+            });
+            winnerTeam = teamAAdvanced ? teamA : teamB;
+          }
 
-            if (teamA && teamB) {
-              const chosenTeam = Math.random() < 0.5 ? teamA : teamB;
-              newWinners[key] = chosenTeam;
-            }
+          if (winnerTeam) {
+            baseWinners[pairKey(ringIndex, pairIndex)] = winnerTeam;
           }
         }
       }
-      return newWinners;
-    });
+    }
+
+    // Limpiamos los ganadores manuales/viejos en el estado para poder correr las animaciones desde la base limpia
+    setPairWinners(baseWinners);
     setDrawKey((current) => current + 1);
-  }, []);
+
+    // 2. Iniciamos la cascada de simulación ronda por ronda
+    let currentWinners = { ...baseWinners };
+    const ringQueue: PlayableRing[] = [0, 2, 3, 4, 5];
+
+    const resolveNextRing = (queueIndex: number) => {
+      if (queueIndex >= ringQueue.length) return;
+
+      const ringIndex = ringQueue[queueIndex];
+      const currentSlotTeams = deriveSlotTeams(DRAW_POSITIONS, currentWinners);
+      const pairCount = getPairCount(ringIndex);
+      let changed = false;
+
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
+        const key = pairKey(ringIndex, pairIndex);
+
+        if (!currentWinners[key]) {
+          const [slotA, slotB] = getPairIndices(ringIndex, pairIndex);
+          const teamA = currentSlotTeams[slotKey(ringIndex, slotA)];
+          const teamB = currentSlotTeams[slotKey(ringIndex, slotB)];
+
+          if (teamA && teamB) {
+            const chosenTeam = Math.random() < 0.5 ? teamA : teamB;
+            currentWinners[key] = chosenTeam;
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        setPairWinners({ ...currentWinners });
+      }
+
+      // Esperamos 1050ms (duración de la transición animada + un pequeño margen para confort visual)
+      // para resolver la siguiente ronda concéntrica.
+      randomTimeoutRef.current = setTimeout(() => {
+        resolveNextRing(queueIndex + 1);
+      }, 1050);
+    };
+
+    // Iniciamos la secuencia tras un brevísimo timeout para que el render del reset impacte
+    randomTimeoutRef.current = setTimeout(() => {
+      resolveNextRing(0);
+    }, 50);
+  }, [allMatches, cancelRandomSequence]);
 
   // Auto-cargar resultados oficiales del fixture real al iniciar
   useEffect(() => {
@@ -168,6 +264,7 @@ export default function SimuladorPage() {
   }, [allMatches, hasLoadedReales, cargarResultadosReales]);
 
   const handleCargarRealesClick = () => {
+    cancelRandomSequence();
     cargarResultadosReales(allMatches);
   };
 
