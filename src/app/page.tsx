@@ -8,7 +8,6 @@ import { Countdown } from '@/components/ui/Countdown';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ParticipantCardSkeleton } from '@/components/ui/Skeletons';
 
-import { useStandings } from '@/hooks/useStandings';
 import { useFootball } from '@/providers/FootballProvider';
 import { useMatches } from '@/hooks/useMatches';
 import { KnockoutBracket } from '@/components/ui/KnockoutBracket';
@@ -27,8 +26,9 @@ export default function Home() {
   const matchesMap = React.useMemo(() => {
     const map = new Map<number, any>();
     allMatches.forEach((m: any) => {
-      if (m.num !== null && m.num !== undefined) {
-        map.set(Number(m.num), m);
+      const numVal = m.num !== null && m.num !== undefined ? Number(m.num) : Number(m.id);
+      if (!isNaN(numVal)) {
+        map.set(numVal, m);
       }
     });
     return map;
@@ -56,7 +56,7 @@ export default function Home() {
 
   const { worldCupApi } = useFootball();
 
-  const handleTeamClick = async (row: any) => {
+  const handleTeamClick = async (row: any, groupLetter: string) => {
     setSelectedTeamData({
       id: row.team.id,
       name: row.team.name,
@@ -70,7 +70,7 @@ export default function Home() {
       goal_diff: row.goal_diff,
       goals_scored: row.goals_scored,
       goals_conceded: row.goals_conceded,
-      group: selectedGroup,
+      group: groupLetter,
     });
     
     setIsLoadingSquad(true);
@@ -88,15 +88,140 @@ export default function Home() {
     }
   };
 
-  const { 
-    data: standings = [], 
-    isLoading: isLoadingStandings,
-    isError: isErrorStandings,
-    error: errorStandings
-  } = useStandings(selectedGroup);
+  const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
-  const isLoading = isLoadingStandings;
-  const isError = isErrorStandings;
+  // Calculate standings for all 12 groups client-side from the matches query
+  const allGroupsStandings = React.useMemo(() => {
+    const map = new Map<string, any[]>();
+    
+    GROUPS.forEach(g => {
+      const groupUpper = g.toUpperCase();
+      const groupMatches = allMatches.filter((m: any) => {
+        if (!m.group) return false;
+        const mGroupUpper = m.group.toUpperCase();
+        return mGroupUpper === `GROUP ${groupUpper}` || mGroupUpper === `GRUPO ${groupUpper}`;
+      });
+
+      const getTeamId = (name: string): number => {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return Math.abs(hash % 10000);
+      };
+
+      const teamsMap: Record<string, any> = {};
+      
+      groupMatches.forEach((m: any) => {
+        const homeName = m.home?.name || m.homeTeam;
+        const awayName = m.away?.name || m.awayTeam;
+        
+        if (homeName && !teamsMap[homeName]) {
+          teamsMap[homeName] = {
+            rank: 0,
+            points: 0,
+            matches: 0,
+            goal_diff: 0,
+            goals_scored: 0,
+            goals_conceded: 0,
+            lost: 0,
+            drawn: 0,
+            won: 0,
+            team: {
+              id: m.home?.id || getTeamId(homeName),
+              name: homeName,
+              logo: m.home?.logo || '',
+            }
+          };
+        }
+        
+        if (awayName && !teamsMap[awayName]) {
+          teamsMap[awayName] = {
+            rank: 0,
+            points: 0,
+            matches: 0,
+            goal_diff: 0,
+            goals_scored: 0,
+            goals_conceded: 0,
+            lost: 0,
+            drawn: 0,
+            won: 0,
+            team: {
+              id: m.away?.id || getTeamId(awayName),
+              name: awayName,
+              logo: m.away?.logo || '',
+            }
+          };
+        }
+      });
+
+      groupMatches.forEach((m: any) => {
+        const isFinished = m.status === 'FINISHED';
+        if (!isFinished || m.homeScore === null || m.awayScore === null) return;
+        
+        const homeName = m.home?.name || m.homeTeam;
+        const awayName = m.away?.name || m.awayTeam;
+        
+        const homeScore = Number(m.homeScore);
+        const awayScore = Number(m.awayScore);
+        
+        const homeTeam = teamsMap[homeName];
+        const awayTeam = teamsMap[awayName];
+        
+        if (homeTeam && awayTeam) {
+          homeTeam.matches += 1;
+          awayTeam.matches += 1;
+          
+          homeTeam.goals_scored += homeScore;
+          homeTeam.goals_conceded += awayScore;
+          homeTeam.goal_diff = homeTeam.goals_scored - homeTeam.goals_conceded;
+          
+          awayTeam.goals_scored += awayScore;
+          awayTeam.goals_conceded += homeScore;
+          awayTeam.goal_diff = awayTeam.goals_scored - awayTeam.goal_conceded;
+          
+          if (homeScore > awayScore) {
+            homeTeam.won += 1;
+            homeTeam.points += 3;
+            awayTeam.lost += 1;
+          } else if (homeScore < awayScore) {
+            awayTeam.won += 1;
+            awayTeam.points += 3;
+            homeTeam.lost += 1;
+          } else {
+            homeTeam.drawn += 1;
+            homeTeam.points += 1;
+            awayTeam.drawn += 1;
+            awayTeam.points += 1;
+          }
+        }
+      });
+
+      const sortedStandings = Object.values(teamsMap).sort((a: any, b: any) => {
+        if (b.points !== a.points) {
+          return b.points - a.points;
+        }
+        if (b.goal_diff !== a.goal_diff) {
+          return b.goal_diff - a.goal_diff;
+        }
+        if (b.goals_scored !== a.goals_scored) {
+          return b.goals_scored - a.goals_scored;
+        }
+        return a.team.name.localeCompare(b.team.name);
+      });
+
+      sortedStandings.forEach((s: any, idx: number) => {
+        s.rank = idx + 1;
+      });
+
+      map.set(g, sortedStandings);
+    });
+
+    return map;
+  }, [allMatches]);
+
+  const isLoading = isLoadingMatches;
+  const isError = !allMatches || allMatches.length === 0;
 
   useEffect(() => {
     if (!isLoading) {
@@ -104,7 +229,6 @@ export default function Home() {
     }
   }, [isLoading]);
 
-  const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
   const focusClasses = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8860B]";
 
   return (
@@ -134,103 +258,86 @@ export default function Home() {
       {/* CLASIFICACIÓN (TABLA DE GRUPOS REAL) */}
       <section id="posiciones" className={cn(theme.layout.section, "bg-[#E8E2D6] text-[#111111]")}>
         <div className={theme.layout.container}>
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             
             {/* STANDINGS TABLE */}
             <div className="w-full">
-              <SectionTitle subtitle="Tabla de posiciones oficial del torneo">Clasificación</SectionTitle>
+              <SectionTitle subtitle="Tabla de posiciones oficial del torneo por grupos">Clasificación</SectionTitle>
               
-              {/* Group Selector Tabs */}
-              <div className="overflow-x-auto mb-6">
-                <div className="flex gap-1.5 min-w-max">
-                  {GROUPS.map(g => (
-                    <button
-                      key={g}
-                      onClick={() => setSelectedGroup(g)}
-                      className={cn(
-                        "px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors whitespace-nowrap",
-                        selectedGroup === g 
-                          ? "bg-[#111111] border-[#111111] text-white" 
-                          : "bg-[#F4F1EA] border-[#CCCCCC] text-[#111111] hover:border-[#111111]"
-                      )}
-                    >
-                      Grupo {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {isLoadingStandings ? (
-                <div className="flex flex-col gap-3">
+              {isLoadingMatches ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <ParticipantCardSkeleton />
                   <ParticipantCardSkeleton />
                   <ParticipantCardSkeleton />
                 </div>
-              ) : isErrorStandings ? (
+              ) : isError ? (
                 <EmptyState 
                   title="Error al cargar clasificación" 
-                  description={errorStandings?.message || "No se pudo obtener la tabla de posiciones."}
+                  description="No se pudieron cargar los datos de los partidos para calcular las posiciones."
                   className="bg-red-50 border-red-500 text-red-900"
                 />
-              ) : standings.length > 0 ? (
-                <div className="border border-[#111111] bg-white overflow-x-auto shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
-                  <table className="w-full min-w-[380px] text-left border-collapse text-xs md:text-sm">
-                    <thead>
-                      <tr className="bg-[#111111] text-white font-bold uppercase tracking-wider text-[10px] md:text-xs">
-                        <th className="py-3 px-3 text-center w-10">Pos</th>
-                        <th className="py-3 px-3">Equipo</th>
-                        <th className="py-3 px-2 text-center">PJ</th>
-                        <th className="py-3 px-2 text-center">G</th>
-                        <th className="py-3 px-2 text-center">E</th>
-                        <th className="py-3 px-2 text-center">P</th>
-                        <th className="py-3 px-2 text-center">DG</th>
-                        <th className="py-3 px-3 text-center bg-[#B8860B] text-[#111111]">Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E0DBCF]">
-                      {standings.map((row) => (
-                        <tr 
-                          key={row.team.id} 
-                          onClick={() => handleTeamClick(row)}
-                          className="hover:bg-[#F4F1EA]/85 transition-colors cursor-pointer group"
-                        >
-                          <td className="py-3 px-3 text-center font-bold text-[#555555]">
-                            {row.rank}
-                          </td>
-                          <td className="py-3 px-3 font-bold flex items-center justify-between gap-2 min-w-[155px]">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-6 h-6 bg-[#F4F1EA] border border-[#CCCCCC] flex items-center justify-center overflow-hidden shrink-0">
-                                {row.team.logo ? (
-                                  <img src={row.team.logo} alt={row.team.name} className="w-full h-full object-contain p-0.5" />
-                                ) : (
-                                  <span className="text-[8px] font-bold">{row.team.name.substring(0, 3).toUpperCase()}</span>
-                                )}
-                              </div>
-                              <span className="truncate">{row.team.name}</span>
-                            </div>
-                            <span className="opacity-0 group-hover:opacity-100 text-[10px] text-[#B8860B] font-bold tracking-wider uppercase transition-opacity duration-200 flex items-center gap-0.5 border-none bg-transparent py-0.5 px-1.5 focus:opacity-100 outline-none shrink-0">
-                              Detalle <ChevronRight className="w-3 h-3" />
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-center text-[#555555] font-semibold">{row.matches}</td>
-                          <td className="py-3 px-2 text-center text-green-700">{row.won}</td>
-                          <td className="py-3 px-2 text-center text-gray-600">{row.drawn}</td>
-                          <td className="py-3 px-2 text-center text-red-700">{row.lost}</td>
-                          <td className="py-3 px-2 text-center font-mono text-[#555555]">
-                            {row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff}
-                          </td>
-                          <td className="py-3 px-3 text-center font-bold bg-[#F9F7F2] border-l border-[#B8860B]/30 text-lg">
-                            {row.points}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               ) : (
-                <EmptyState 
-                  title="Posiciones no disponibles" 
-                  description="No se encontraron tablas de clasificación para este grupo."
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {GROUPS.map(g => {
+                    const groupStandings = allGroupsStandings.get(g) || [];
+                    return (
+                      <div key={g} className="flex flex-col">
+                        <h3 className="text-sm font-bold uppercase tracking-wider mb-2 text-[#111111] font-mono border-b border-[#111111] pb-1">
+                          Grupo {g}
+                        </h3>
+                        {groupStandings.length > 0 ? (
+                          <div className="border border-[#111111] bg-white overflow-x-auto shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-[#111111] text-white font-bold uppercase tracking-wider text-[10px]">
+                                  <th className="py-2 px-2 text-center w-8">Pos</th>
+                                  <th className="py-2 px-2">Equipo</th>
+                                  <th className="py-2 px-1 text-center">PJ</th>
+                                  <th className="py-2 px-1 text-center">DG</th>
+                                  <th className="py-2 px-2 text-center bg-[#B8860B] text-[#111111] w-10">Pts</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#E0DBCF]">
+                                {groupStandings.map((row) => (
+                                  <tr 
+                                    key={row.team.id} 
+                                    onClick={() => handleTeamClick(row, g)}
+                                    className="hover:bg-[#F4F1EA]/85 transition-colors cursor-pointer group"
+                                  >
+                                    <td className="py-2 px-2 text-center font-bold text-[#555555]">
+                                      {row.rank}
+                                    </td>
+                                    <td className="py-2 px-2 font-bold flex items-center gap-1.5 min-w-[125px]">
+                                      <div className="w-5 h-5 bg-[#F4F1EA] border border-[#CCCCCC] flex items-center justify-center overflow-hidden shrink-0">
+                                        {row.team.logo ? (
+                                          <img src={row.team.logo} alt={row.team.name} className="w-full h-full object-contain p-0.5" />
+                                        ) : (
+                                          <span className="text-[7px] font-bold">{row.team.name.substring(0, 3).toUpperCase()}</span>
+                                        )}
+                                      </div>
+                                      <span className="truncate text-[11px]">{row.team.name}</span>
+                                    </td>
+                                    <td className="py-2 px-1 text-center text-[#555555] font-semibold">{row.matches}</td>
+                                    <td className="py-2 px-1 text-center font-mono text-[#555555]">
+                                      {row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff}
+                                    </td>
+                                    <td className="py-2 px-2 text-center font-bold bg-[#F9F7F2] border-l border-[#B8860B]/30">
+                                      {row.points}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="py-6 text-center text-xs text-gray-500 bg-white border border-[#111111] shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
+                            Sin datos
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
