@@ -1,0 +1,326 @@
+.circle-points {
+  --flag-size: 52px;
+  color: var(--dot-color);
+  position: relative;
+  width: min(calc(100% - 64px), min(calc(100vh - 160px), 1000px));
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.circle-points__connector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.circle-points__connector line,
+.circle-points__connector path {
+  stroke: var(--connector-color);
+  stroke-width: 0.15;
+  fill: none;
+}
+
+.circle-points__trophy {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.circle-points__trophy img {
+  width: 40px;
+  height: auto;
+  display: block;
+  mix-blend-mode: var(--trophy-blend-mode);
+}
+
+.circle-points__ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.circle-points__ring--first {
+  z-index: 3;
+}
+
+.circle-points__ring--second {
+  z-index: 2;
+}
+
+.circle-points__ring--playable {
+  z-index: 4;
+}
+
+.circle-points__ring--playable-inner {
+  z-index: 5;
+}
+
+.circle-points__ring--playable-final {
+  z-index: 6;
+}
+
+.circle-points__ring--playable-championship {
+  z-index: 7;
+}
+
+.circle-points__path-measure {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.circle-points__pending-target-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.circle-points__pending-target-layer .circle-points__point--pending-target {
+  z-index: 0;
+  pointer-events: none;
+}
+
+.circle-points__traveling-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.circle-points__traveling-flag {
+  position: absolute;
+  width: var(--flag-size);
+  height: var(--flag-size);
+  transform: translate(-50%, -50%);
+  z-index: 11;
+  pointer-events: none;
+}
+
+.circle-points__point {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  transition: background-color 0.4s ease;
+}
+
+.circle-points__point--team {
+  width: var(--flag-size);
+  height: var(--flag-size);
+  display: block;
+  border-radius: 50%;
+  background: var(--bg-flag);
+  border: none;
+  overflow: visible;
+  z-index: 1;
+}
+
+.circle-points__point--first-slot {
+  width: var(--flag-size);
+  height: var(--flag-size);
+  background: transparent;
+  overflow: visible;
+  z-index: 9;
+}
+
+.circle-points__dot-marker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    background-color 0.4s ease,
+    opacity 0.4s ease;
+}
+
+.circle-points__ring--first .circle-points__flag-tooltip,
+.circle-points__flag-button {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  width: var(--flag-size);
+  height: var(--flag-size);
+  mix-blend-mode: normal;
+}
+
+.circle-points__ring--first
+  .circle-points__flag-tooltip
+  .circle-points__flag-stack
+  .circle-points__flag {
+  position: absolute;
+  transform: none;
+}
+
+.circle-points__point--first-slot:has(.circle-points__flag-tooltip:hover),
+.circle-points__point--first-slot:has(.circle-points__flag-button:hover),
+.circle-points__point--first-slot:has(
+  .circle-points__flag-button:focus-visible
+) {
+  z-index: 20;
+}
+
+.circle-points__point--team:has(.circle-points__flag-tooltip:hover),
+button.circle-points__point--team:hover,
+button.circle-points__point--team:focus-visible {
+  z-index: 20;
+}
+
+.circle-points__flag-button {
+  width: var(--flag-size);
+  height: var(--flag-size);
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: var(--bg-flag);
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.circle-points__flag-button:disabled,
+button.circle-points__point:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+button.circle-points__point {
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.circle-points__point--selectable {
+  cursor: pointer;
+}
+
+.circle-points__point--passed .circle-points__dot-marker,
+.circle-points__point--passed:not(.circle-points__point--first-slot):not(
+    .circle-points__point--team
+  ) {
+  background: var(--connector-color);
+}
+
+.circle-points__flag-stack {
+  position: relative;
+  display: block;
+  width: var(--flag-size);
+  height: var(--flag-size);
+}
+
+.circle-points__flag {
+  width: var(--flag-size);
+  height: var(--flag-size);
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.circle-points__flag-stack .circle-points__flag {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.4s ease;
+}
+
+.circle-points__flag--active {
+  opacity: 1;
+}
+
+.circle-points__flag--inactive {
+  filter: sepia(1) saturate(0.7);
+  opacity: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .circle-points__flag--inactive {
+    filter: saturate(0.33);
+  }
+}
+
+.circle-points__flag-stack--inactive .circle-points__flag--active {
+  opacity: 0;
+}
+
+.circle-points__flag-stack--inactive .circle-points__flag--inactive {
+  opacity: 0.4;
+}
+
+.circle-points__flag-tooltip {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.circle-points__tooltip {
+  position: fixed;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+  z-index: 50;
+}
+
+.circle-points__tooltip--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (max-width: 639px) {
+  .circle-points {
+    --flag-size: 32px;
+    width: min(calc(100% - 16px), 100vw);
+  }
+
+  .circle-points__point {
+    width: 4px;
+    height: 4px;
+  }
+
+  .circle-points__dot-marker {
+    width: 4px;
+    height: 4px;
+  }
+
+  .circle-points__trophy img {
+    width: 28px;
+  }
+}

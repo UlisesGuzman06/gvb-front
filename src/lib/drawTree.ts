@@ -1,19 +1,15 @@
-// Ported and adapted from pauljnoble/fwc2026-knockout
-// Core data structures and pure functions for the circular bracket
-
 export type DrawPosition = {
-  position: number;
-  pair: number;
-  isoCode: string;
-  team: string | null;
-};
+  position: number
+  pair: number
+  isoCode: string
+  team: string | null
+}
 
-// Ring counts: [R16=32, connector=32, QF=16, R8=8, SF=4, F=2]
-export const RING_COUNTS = [32, 32, 16, 8, 4, 2] as const;
+export const RING_COUNTS = [32, 32, 16, 8, 4, 2] as const
 
-export const PLAYABLE_RINGS = [0, 2, 3, 4, 5] as const;
+export const PLAYABLE_RINGS = [0, 2, 3, 4, 5] as const
 
-export type PlayableRing = (typeof PLAYABLE_RINGS)[number];
+export type PlayableRing = (typeof PLAYABLE_RINGS)[number]
 
 export const NEXT_RING: Record<PlayableRing, number | null> = {
   0: 2,
@@ -21,157 +17,197 @@ export const NEXT_RING: Record<PlayableRing, number | null> = {
   3: 4,
   4: 5,
   5: null,
-};
+}
 
 export type Team = {
-  isoCode: string;
-  name: string;
-};
+  isoCode: string
+  name: string
+}
 
 export function slotKey(ringIndex: number, slotIndex: number): string {
-  return `${ringIndex}-${slotIndex}`;
+  return `${ringIndex}-${slotIndex}`
 }
 
 export function pairKey(ringIndex: number, pairIndex: number): string {
-  return `${ringIndex}-pair-${pairIndex}`;
+  return `${ringIndex}-pair-${pairIndex}`
 }
 
-export function getPairIndices(
-  _ringIndex: number,
-  pairIndex: number
-): [number, number] {
-  return [pairIndex * 2, pairIndex * 2 + 1];
+export function getPairIndices(_ringIndex: number, pairIndex: number): [number, number] {
+  return [pairIndex * 2, pairIndex * 2 + 1]
 }
 
 export function getPairCount(ringIndex: number): number {
-  return RING_COUNTS[ringIndex] / 2;
+  return RING_COUNTS[ringIndex] / 2
 }
 
 export function getPairIndex(slotIndex: number): number {
-  return Math.floor(slotIndex / 2);
+  return Math.floor(slotIndex / 2)
 }
 
 export function isPlayableRing(ringIndex: number): ringIndex is PlayableRing {
-  return (PLAYABLE_RINGS as readonly number[]).includes(ringIndex);
+  return PLAYABLE_RINGS.includes(ringIndex as PlayableRing)
 }
 
-function teamKey(team: Team): string {
-  return team.isoCode;
+function teamFromPosition(position: DrawPosition): Team {
+  return {
+    isoCode: position.isoCode,
+    name: position.team ?? position.isoCode,
+  }
 }
 
-export function getPairWinner(
-  pairWinners: Record<string, Team>,
-  ringIndex: number,
-  pairIndex: number
-): Team | null {
-  return pairWinners[pairKey(ringIndex, pairIndex)] ?? null;
-}
+export function createInitialSlotTeams(positions: DrawPosition[]): Record<string, Team> {
+  const slots: Record<string, Team> = {}
 
-export function getTeamState(
-  pairWinners: Record<string, Team>,
-  team: Team,
-  ringIndex: number,
-  slotIndex: number
-): 'active' | 'winner' | 'eliminated' {
-  const thisPairIndex = getPairIndex(slotIndex);
-  const winner = getPairWinner(pairWinners, ringIndex, thisPairIndex);
+  positions.forEach((position, index) => {
+    slots[slotKey(0, index)] = teamFromPosition(position)
+  })
 
-  if (!winner) return 'active';
-  if (teamKey(winner) === teamKey(team)) return 'winner';
-  return 'eliminated';
+  return slots
 }
 
 export function deriveSlotTeams(
   positions: DrawPosition[],
   pairWinners: Record<string, Team>,
-  ringIndex: number
-): (Team | null)[] {
-  const count = RING_COUNTS[ringIndex];
-  const slots: (Team | null)[] = Array(count).fill(null);
+): Record<string, Team> {
+  const slots = createInitialSlotTeams(positions)
 
-  if (ringIndex === 0) {
-    // Outer ring — initial teams
-    for (const pos of positions) {
-      const slotIndex = pos.position - 1;
-      if (slotIndex >= 0 && slotIndex < count && pos.team) {
-        slots[slotIndex] = { isoCode: pos.isoCode, name: pos.team };
+  for (const ringIndex of PLAYABLE_RINGS) {
+    const pairCount = getPairCount(ringIndex)
+
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+      const winner = pairWinners[pairKey(ringIndex, pairIndex)]
+      if (!winner) {
+        continue
       }
-    }
-    return slots;
-  }
 
-  if (ringIndex === 1) {
-    // Second ring — mirrors the outer ring (same teams, decorative)
-    return deriveSlotTeams(positions, pairWinners, 0);
-  }
+      const [slotA, slotB] = getPairIndices(ringIndex, pairIndex)
+      const teamA = slots[slotKey(ringIndex, slotA)]
+      const teamB = slots[slotKey(ringIndex, slotB)]
 
-  // Inner playable rings — derived from winners of previous playable ring
-  const prevPlayableRing = (
-    Object.entries(NEXT_RING) as [string, number | null][]
-  ).find(([, next]) => next === ringIndex);
+      if (!teamA || !teamB) {
+        continue
+      }
 
-  if (!prevPlayableRing) return slots;
+      const winnerInPair =
+        winner.isoCode === teamA.isoCode || winner.isoCode === teamB.isoCode
 
-  const prevRingIndex = parseInt(prevPlayableRing[0]);
-  const prevCount = RING_COUNTS[prevRingIndex];
-  const prevPairCount = prevCount / 2;
+      if (!winnerInPair) {
+        continue
+      }
 
-  for (let pairIdx = 0; pairIdx < prevPairCount; pairIdx++) {
-    const winner = getPairWinner(pairWinners, prevRingIndex, pairIdx);
-    if (winner) {
-      slots[pairIdx] = winner;
+      const nextRing = NEXT_RING[ringIndex]
+      if (nextRing === null) {
+        continue
+      }
+
+      slots[slotKey(nextRing, pairIndex)] = winner
     }
   }
 
-  return slots;
+  return slots
 }
 
-export function canSelectPair(
+export function prunePairWinners(
   positions: DrawPosition[],
   pairWinners: Record<string, Team>,
-  ringIndex: number,
-  pairIndex: number
-): boolean {
-  const slotTeams = deriveSlotTeams(positions, pairWinners, ringIndex);
-  const [i1, i2] = getPairIndices(ringIndex, pairIndex);
-  return slotTeams[i1] !== null && slotTeams[i2] !== null;
+): Record<string, Team> {
+  const slots = createInitialSlotTeams(positions)
+  const validWinners: Record<string, Team> = {}
+
+  for (const ringIndex of PLAYABLE_RINGS) {
+    const pairCount = getPairCount(ringIndex)
+
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+      const winner = pairWinners[pairKey(ringIndex, pairIndex)]
+      if (!winner) {
+        continue
+      }
+
+      const [slotA, slotB] = getPairIndices(ringIndex, pairIndex)
+      const teamA = slots[slotKey(ringIndex, slotA)]
+      const teamB = slots[slotKey(ringIndex, slotB)]
+
+      if (!teamA || !teamB) {
+        continue
+      }
+
+      const winnerInPair =
+        winner.isoCode === teamA.isoCode || winner.isoCode === teamB.isoCode
+
+      if (!winnerInPair) {
+        continue
+      }
+
+      validWinners[pairKey(ringIndex, pairIndex)] = winner
+
+      const nextRing = NEXT_RING[ringIndex]
+      if (nextRing !== null) {
+        slots[slotKey(nextRing, pairIndex)] = winner
+      }
+    }
+  }
+
+  return validWinners
 }
 
 export function selectPairWinner(
+  positions: DrawPosition[],
   pairWinners: Record<string, Team>,
-  ringIndex: number,
+  ringIndex: PlayableRing,
   pairIndex: number,
-  winner: Team
+  team: Team,
 ): Record<string, Team> {
-  const key = pairKey(ringIndex, pairIndex);
-  const existing = pairWinners[key];
-
-  // If clicking the same team, deselect
-  if (existing && teamKey(existing) === teamKey(winner)) {
-    const next = { ...pairWinners };
-    delete next[key];
-    // Also clear downstream winners that depended on this
-    return clearDownstream(next, ringIndex, pairIndex);
+  const updated = {
+    ...pairWinners,
+    [pairKey(ringIndex, pairIndex)]: team,
   }
 
-  const next = { ...pairWinners, [key]: winner };
-  return clearDownstream(next, ringIndex, pairIndex);
+  return prunePairWinners(positions, updated)
 }
 
-function clearDownstream(
+export function canSelectPair(
+  ringIndex: PlayableRing,
+  pairIndex: number,
+  slotTeams: Record<string, Team>,
+  blockedSlots: ReadonlySet<string> = new Set(),
+): boolean {
+  const [slotA, slotB] = getPairIndices(ringIndex, pairIndex)
+  const keyA = slotKey(ringIndex, slotA)
+  const keyB = slotKey(ringIndex, slotB)
+
+  return Boolean(
+    slotTeams[keyA] &&
+    slotTeams[keyB] &&
+    !blockedSlots.has(keyA) &&
+    !blockedSlots.has(keyB),
+  )
+}
+
+export function getPairWinner(
+  ringIndex: PlayableRing,
+  pairIndex: number,
   pairWinners: Record<string, Team>,
-  ringIndex: number,
-  pairIndex: number
-): Record<string, Team> {
-  const nextRing = NEXT_RING[ringIndex as PlayableRing];
-  if (nextRing === null) return pairWinners;
+): Team | null {
+  return pairWinners[pairKey(ringIndex, pairIndex)] ?? null
+}
 
-  const nextPairIndex = Math.floor(pairIndex / 2);
-  const nextKey = pairKey(nextRing, nextPairIndex);
+export function getTeamState(
+  ringIndex: PlayableRing,
+  slotIndex: number,
+  slotTeams: Record<string, Team>,
+  pairWinners: Record<string, Team>,
+): 'idle' | 'winner' | 'eliminated' {
+  const pairIndex = getPairIndex(slotIndex)
+  const winner = getPairWinner(ringIndex, pairIndex, pairWinners)
 
-  if (!pairWinners[nextKey]) return pairWinners;
+  if (!winner) {
+    return 'idle'
+  }
 
-  const next = { ...pairWinners };
-  delete next[nextKey];
-  return clearDownstream(next, nextRing as PlayableRing, nextPairIndex);
+  const team = slotTeams[slotKey(ringIndex, slotIndex)]
+  if (!team) {
+    return 'idle'
+  }
+
+  return team.isoCode === winner.isoCode ? 'winner' : 'eliminated'
 }

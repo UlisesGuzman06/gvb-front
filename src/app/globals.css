@@ -29,6 +29,13 @@
   --background: var(--color-primary);
   --foreground: var(--color-text-main);
   --panels: #ffffff;
+
+  --bg-flag: #F4F1EA;
+  --connector-color: #c8c8c8;
+  --dot-color: #111;
+  --tooltip-bg: rgb(17 17 17 / 0.92);
+  --tooltip-text: #fff;
+  --trophy-blend-mode: darken;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,6 +43,13 @@
     --background: #111111;
     --foreground: #F5F5F5;
     --panels: #1A1A1A;
+
+    --bg-flag: #111111;
+    --connector-color: #4b4d50;
+    --dot-color: #73767a;
+    --tooltip-bg: rgb(237 232 228 / 0.95);
+    --tooltip-text: #161412;
+    --trophy-blend-mode: normal;
   }
 }
 
