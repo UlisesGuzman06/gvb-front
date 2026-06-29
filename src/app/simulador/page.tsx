@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { CirclePoints } from '@/components/ui/CirclePoints';
+import { useMatches } from '@/hooks/useMatches';
 import { 
   type DrawPosition, 
   type Team, 
@@ -13,10 +14,12 @@ import {
   selectPairWinner, 
   canSelectPair,
   isPlayableRing,
-  type PlayableRing
+  type PlayableRing,
+  getPairCount,
+  getPairIndices
 } from '@/lib/drawTree';
 import { TeamFlag } from '@/components/ui/TeamFlag';
-import { RotateCcw, Trophy } from 'lucide-react';
+import { RotateCcw, Trophy, RefreshCw } from 'lucide-react';
 
 const TEAMS_2026 = [
   { isoCode: "BRA", name: "Brasil" },
@@ -83,6 +86,10 @@ export default function SimuladorPage() {
   const [pairWinners, setPairWinners] = useState<Record<string, Team>>({});
   const [drawKey, setDrawKey] = useState(0);
   const [activeTab, setActiveTab] = useState<PlayableRing>(0);
+  const [hasLoadedReales, setHasLoadedReales] = useState(false);
+
+  // Hook de React-Query para obtener la base de datos de partidos reales
+  const { data: allMatches = [], isLoading: isLoadingMatches } = useMatches();
 
   const handleReset = useCallback(() => {
     setPairWinners({});
@@ -111,6 +118,79 @@ export default function SimuladorPage() {
     return getPairWinner(5, 0, pairWinners);
   }, [pairWinners]);
 
+  // Lógica inteligente para cargar los resultados oficiales/reales
+  const cargarResultadosReales = useCallback((fixtures: any[]) => {
+    let newWinners: Record<string, Team> = {};
+    const playableRings: PlayableRing[] = [0, 2, 3, 4, 5];
+
+    for (const ringIndex of playableRings) {
+      // Obtenemos los equipos proyectados en base a lo que ya decidimos
+      const currentSlotTeams = deriveSlotTeams(DRAW_POSITIONS, newWinners);
+      const pairCount = getPairCount(ringIndex);
+
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
+        const [slotA, slotB] = getPairIndices(ringIndex, pairIndex);
+        const teamA = currentSlotTeams[slotKey(ringIndex, slotA)];
+        const teamB = currentSlotTeams[slotKey(ringIndex, slotB)];
+
+        if (!teamA || !teamB) continue;
+
+        // Buscamos si existe un partido real terminado entre estos dos equipos
+        const realMatch = fixtures.find((f: any) => 
+          f.status === 'FINISHED' && 
+          f.homeScore !== null && 
+          f.awayScore !== null && 
+          (
+            (f.home?.name === teamA.name && f.away?.name === teamB.name) ||
+            (f.home?.name === teamB.name && f.away?.name === teamA.name)
+          )
+        );
+
+        if (realMatch) {
+          let winnerTeam: Team | null = null;
+          
+          if (realMatch.homeScore !== realMatch.awayScore) {
+            // Ganador por diferencia de goles
+            winnerTeam = realMatch.homeScore > realMatch.awayScore
+              ? (realMatch.home?.name === teamA.name ? teamA : teamB)
+              : (realMatch.away?.name === teamA.name ? teamA : teamB);
+          } else {
+            // Empate en tiempo regular/extra. Deducimos el clasificado por penales
+            // viendo quién de los dos equipos figura en algún otro partido futuro/posterior
+            // de la copa del mundo (número de partido superior al realMatch.num/id)
+            const matchNum = realMatch.num !== undefined && realMatch.num !== null ? Number(realMatch.num) : Number(realMatch.id);
+            
+            const teamAAdvanced = fixtures.some((f: any) => {
+              const fNum = f.num !== undefined && f.num !== null ? Number(f.num) : Number(f.id);
+              return fNum > matchNum && (f.home?.name === teamA.name || f.away?.name === teamA.name);
+            });
+
+            winnerTeam = teamAAdvanced ? teamA : teamB;
+          }
+
+          if (winnerTeam) {
+            newWinners[pairKey(ringIndex, pairIndex)] = winnerTeam;
+          }
+        }
+      }
+    }
+
+    setPairWinners(newWinners);
+    setDrawKey((current) => current + 1);
+  }, []);
+
+  // Auto-cargar resultados oficiales del fixture real al iniciar
+  useEffect(() => {
+    if (allMatches.length > 0 && !hasLoadedReales) {
+      cargarResultadosReales(allMatches);
+      setHasLoadedReales(true);
+    }
+  }, [allMatches, hasLoadedReales, cargarResultadosReales]);
+
+  const handleCargarRealesClick = () => {
+    cargarResultadosReales(allMatches);
+  };
+
   return (
     <div className="min-h-screen bg-[#F4F1EA] pt-28 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -125,13 +205,25 @@ export default function SimuladorPage() {
               Selecciona los ganadores en el círculo o en la tabla de la derecha para armar tu fixture del Mundial 2026.
             </p>
           </div>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 border-2 border-[#0B2545] text-[#0B2545] px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#0B2545] hover:text-white transition-transform active:scale-95 duration-100"
-          >
-            <RotateCcw size={14} />
-            Reiniciar
-          </button>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={handleCargarRealesClick}
+              disabled={isLoadingMatches || allMatches.length === 0}
+              className="flex items-center gap-2 border-2 border-[#B8860B] bg-transparent text-[#B8860B] px-5 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#B8860B] hover:text-white transition-all active:scale-95 duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={14} className={isLoadingMatches ? 'animate-spin' : ''} />
+              Cargar Reales
+            </button>
+
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 border-2 border-[#0B2545] text-[#0B2545] px-5 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#0B2545] hover:text-white transition-all active:scale-95 duration-100"
+            >
+              <RotateCcw size={14} />
+              Reiniciar
+            </button>
+          </div>
         </div>
 
         {/* Layout de dos columnas */}
