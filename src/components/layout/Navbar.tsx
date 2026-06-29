@@ -21,6 +21,7 @@ export function Navbar() {
   const baseLinks = [
     { label: 'Inicio', href: '/' },
     { label: 'Fixture', href: '/fixture' },
+    { label: 'Simulador', href: '/simulador' },
     { label: 'Reglamento', href: '/reglamento' },
   ];
 
