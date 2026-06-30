@@ -35,6 +35,154 @@ export default function Home() {
     return map;
   }, [allMatches]);
 
+  const allGroupsStandings = React.useMemo(() => {
+    if (!allMatches.length) return { bestFirsts: [], bestSeconds: [], bestThirds: [] };
+
+    const getTeamId = (name: string): number => {
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return Math.abs(hash % 10000);
+    };
+
+    const GROUPS_LIST = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+    const groupsResults: Record<string, any[]> = {};
+
+    GROUPS_LIST.forEach(g => {
+      const groupUpper = g.toUpperCase();
+      const groupMatches = allMatches.filter((m: any) => {
+        if (!m.group) return false;
+        const mGroupUpper = m.group.toUpperCase();
+        return mGroupUpper === `GROUP ${groupUpper}` || mGroupUpper === `GRUPO ${groupUpper}`;
+      });
+
+      const teamsMap: Record<string, any> = {};
+
+      groupMatches.forEach((m: any) => {
+        const homeName = m.home.name;
+        const awayName = m.away.name;
+
+        if (homeName && !teamsMap[homeName]) {
+          teamsMap[homeName] = {
+            points: 0,
+            matches: 0,
+            goal_diff: 0,
+            goals_scored: 0,
+            goals_conceded: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            group: groupUpper,
+            team: {
+              id: m.home.id || getTeamId(homeName),
+              name: homeName,
+              logo: m.home.logo || '',
+            }
+          };
+        }
+
+        if (awayName && !teamsMap[awayName]) {
+          teamsMap[awayName] = {
+            points: 0,
+            matches: 0,
+            goal_diff: 0,
+            goals_scored: 0,
+            goals_conceded: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            group: groupUpper,
+            team: {
+              id: m.away.id || getTeamId(awayName),
+              name: awayName,
+              logo: m.away.logo || '',
+            }
+          };
+        }
+      });
+
+      groupMatches.forEach((m: any) => {
+        const isFinished = m.status === 'FINISHED';
+        if (!isFinished || m.homeScore === null || m.awayScore === null) return;
+
+        const homeName = m.home.name;
+        const awayName = m.away.name;
+        const homeScore = Number(m.homeScore);
+        const awayScore = Number(m.awayScore);
+
+        const homeTeam = teamsMap[homeName];
+        const awayTeam = teamsMap[awayName];
+
+        if (homeTeam && awayTeam) {
+          homeTeam.matches += 1;
+          awayTeam.matches += 1;
+          homeTeam.goals_scored += homeScore;
+          homeTeam.goals_conceded += awayScore;
+          homeTeam.goal_diff = homeTeam.goals_scored - homeTeam.goals_conceded;
+
+          awayTeam.goals_scored += awayScore;
+          awayTeam.goals_conceded += homeScore;
+          awayTeam.goal_diff = awayTeam.goals_scored - awayTeam.goals_conceded;
+
+          if (homeScore > awayScore) {
+            homeTeam.won += 1;
+            homeTeam.points += 3;
+            awayTeam.lost += 1;
+          } else if (homeScore < awayScore) {
+            awayTeam.won += 1;
+            awayTeam.points += 3;
+            homeTeam.lost += 1;
+          } else {
+            homeTeam.drawn += 1;
+            homeTeam.points += 1;
+            awayTeam.drawn += 1;
+            awayTeam.points += 1;
+          }
+        }
+      });
+
+      const standings = Object.values(teamsMap).sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.goal_diff !== a.goal_diff) return b.goal_diff - a.goal_diff;
+        if (b.goals_scored !== a.goals_scored) return b.goals_scored - a.goals_scored;
+        return a.team.name.localeCompare(b.team.name);
+      });
+
+      standings.forEach((s, idx) => {
+        s.rank = idx + 1;
+      });
+
+      groupsResults[groupUpper] = standings;
+    });
+
+    const firsts: any[] = [];
+    const seconds: any[] = [];
+    const thirds: any[] = [];
+
+    Object.keys(groupsResults).forEach(groupName => {
+      const standings = groupsResults[groupName];
+      if (standings.length >= 1) firsts.push(standings[0]);
+      if (standings.length >= 2) seconds.push(standings[1]);
+      if (standings.length >= 3) thirds.push(standings[2]);
+    });
+
+    const sortRankedTeams = (arr: any[]) => {
+      return [...arr].sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.goal_diff !== a.goal_diff) return b.goal_diff - a.goal_diff;
+        if (b.goals_scored !== a.goals_scored) return b.goals_scored - a.goals_scored;
+        return a.team.name.localeCompare(b.team.name);
+      });
+    };
+
+    return {
+      bestFirsts: sortRankedTeams(firsts),
+      bestSeconds: sortRankedTeams(seconds),
+      bestThirds: sortRankedTeams(thirds),
+    };
+  }, [allMatches]);
+
   const [selectedTeamData, setSelectedTeamData] = useState<{
     id: number;
     name: string;
@@ -233,6 +381,173 @@ export default function Home() {
                   description="No se encontraron tablas de clasificación para este grupo."
                 />
               )}
+            </div>
+          </div>
+
+          {/* RESUMEN DE CLASIFICADOS (MEJORES 1º, 2º Y 3º) */}
+          <div className="w-full mt-16">
+            <SectionTitle subtitle="Comparativa de posiciones de todos los grupos">Resumen de Clasificados</SectionTitle>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* 1. MEJORES PRIMEROS */}
+              <div className="border border-[#111111] bg-white shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex flex-col">
+                <div className="bg-[#111111] text-white py-3 px-4 font-black uppercase tracking-widest text-xs flex justify-between items-center border-b border-[#111111]">
+                  <span>1ros de Grupo</span>
+                  <span className="text-[#B8860B] text-[10px]">Mejores Primeros</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#F4F1EA] text-[#555555] font-bold uppercase tracking-wider text-[9px] border-b border-[#E0DBCF]">
+                        <th className="py-2 px-2.5 text-center w-8">#</th>
+                        <th className="py-2 px-2">Equipo</th>
+                        <th className="py-2 px-1.5 text-center w-8">Gr</th>
+                        <th className="py-2 px-1.5 text-center w-8">DG</th>
+                        <th className="py-2 px-1.5 text-center w-8">GF</th>
+                        <th className="py-2 px-2.5 text-center w-10 bg-[#B8860B]/10 text-[#8B6508]">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E0DBCF]">
+                      {allGroupsStandings.bestFirsts.map((row, index) => (
+                        <tr key={row.team.id} className="hover:bg-[#F4F1EA]/50 transition-colors">
+                          <td className="py-2 px-2.5 text-center font-bold text-[#555555]">
+                            {index + 1}
+                          </td>
+                          <td className="py-2 px-2 font-bold flex items-center gap-1.5 min-w-[110px]">
+                            <div className="w-5 h-5 bg-[#F4F1EA] border border-[#CCCCCC] flex items-center justify-center overflow-hidden shrink-0">
+                              {row.team.logo ? (
+                                <img src={row.team.logo} alt={row.team.name} className="w-full h-full object-contain p-0.5" />
+                              ) : (
+                                <span className="text-[7px] font-bold">{row.team.name.substring(0, 3).toUpperCase()}</span>
+                              )}
+                            </div>
+                            <span className="truncate">{row.team.name}</span>
+                          </td>
+                          <td className="py-2 px-1.5 text-center font-mono font-bold text-gray-500">{row.group}</td>
+                          <td className="py-2 px-1.5 text-center font-mono font-semibold text-gray-600">
+                            {row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff}
+                          </td>
+                          <td className="py-2 px-1.5 text-center font-mono text-gray-500">{row.goals_scored}</td>
+                          <td className="py-2 px-2.5 text-center font-mono font-bold bg-[#F9F7F2] text-[#8B6508] border-l border-[#B8860B]/20">
+                            {row.points}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 2. MEJORES SEGUNDOS */}
+              <div className="border border-[#111111] bg-white shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex flex-col">
+                <div className="bg-[#111111] text-white py-3 px-4 font-black uppercase tracking-widest text-xs flex justify-between items-center border-b border-[#111111]">
+                  <span>2dos de Grupo</span>
+                  <span className="text-[#B8860B] text-[10px]">Mejores Segundos</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#F4F1EA] text-[#555555] font-bold uppercase tracking-wider text-[9px] border-b border-[#E0DBCF]">
+                        <th className="py-2 px-2.5 text-center w-8">#</th>
+                        <th className="py-2 px-2">Equipo</th>
+                        <th className="py-2 px-1.5 text-center w-8">Gr</th>
+                        <th className="py-2 px-1.5 text-center w-8">DG</th>
+                        <th className="py-2 px-1.5 text-center w-8">GF</th>
+                        <th className="py-2 px-2.5 text-center w-10 bg-[#B8860B]/10 text-[#8B6508]">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E0DBCF]">
+                      {allGroupsStandings.bestSeconds.map((row, index) => (
+                        <tr key={row.team.id} className="hover:bg-[#F4F1EA]/50 transition-colors">
+                          <td className="py-2 px-2.5 text-center font-bold text-[#555555]">
+                            {index + 1}
+                          </td>
+                          <td className="py-2 px-2 font-bold flex items-center gap-1.5 min-w-[110px]">
+                            <div className="w-5 h-5 bg-[#F4F1EA] border border-[#CCCCCC] flex items-center justify-center overflow-hidden shrink-0">
+                              {row.team.logo ? (
+                                <img src={row.team.logo} alt={row.team.name} className="w-full h-full object-contain p-0.5" />
+                              ) : (
+                                <span className="text-[7px] font-bold">{row.team.name.substring(0, 3).toUpperCase()}</span>
+                              )}
+                            </div>
+                            <span className="truncate">{row.team.name}</span>
+                          </td>
+                          <td className="py-2 px-1.5 text-center font-mono font-bold text-gray-500">{row.group}</td>
+                          <td className="py-2 px-1.5 text-center font-mono font-semibold text-gray-600">
+                            {row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff}
+                          </td>
+                          <td className="py-2 px-1.5 text-center font-mono text-gray-500">{row.goals_scored}</td>
+                          <td className="py-2 px-2.5 text-center font-mono font-bold bg-[#F9F7F2] text-[#8B6508] border-l border-[#B8860B]/20">
+                            {row.points}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 3. MEJORES TERCEROS */}
+              <div className="border border-[#111111] bg-white shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] flex flex-col">
+                <div className="bg-[#111111] text-white py-3 px-4 font-black uppercase tracking-widest text-xs flex justify-between items-center border-b border-[#111111]">
+                  <span>3ros de Grupo</span>
+                  <span className="text-[#B8860B] text-[10px]">Mejores Terceros</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#F4F1EA] text-[#555555] font-bold uppercase tracking-wider text-[9px] border-b border-[#E0DBCF]">
+                        <th className="py-2 px-2.5 text-center w-8">#</th>
+                        <th className="py-2 px-2">Equipo</th>
+                        <th className="py-2 px-1.5 text-center w-8">Gr</th>
+                        <th className="py-2 px-1.5 text-center w-8">DG</th>
+                        <th className="py-2 px-1.5 text-center w-8">GF</th>
+                        <th className="py-2 px-2.5 text-center w-10 bg-[#B8860B]/10 text-[#8B6508]">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E0DBCF]">
+                      {allGroupsStandings.bestThirds.map((row, index) => {
+                        const advances = index < 8; // Top 8 best thirds advance to Round of 32
+                        return (
+                          <tr 
+                            key={row.team.id} 
+                            className={cn(
+                              "transition-colors",
+                              advances ? "bg-green-50/20 hover:bg-green-50/40" : "hover:bg-[#F4F1EA]/50"
+                            )}
+                          >
+                            <td className={cn(
+                              "py-2 px-2.5 text-center font-bold",
+                              advances ? "text-green-700" : "text-[#555555]"
+                            )}>
+                              {index + 1}
+                              {advances && <span className="text-[7px] block text-green-600 font-mono font-bold leading-none">PASA</span>}
+                            </td>
+                            <td className="py-2 px-2 font-bold flex items-center gap-1.5 min-w-[110px]">
+                              <div className="w-5 h-5 bg-[#F4F1EA] border border-[#CCCCCC] flex items-center justify-center overflow-hidden shrink-0">
+                                {row.team.logo ? (
+                                  <img src={row.team.logo} alt={row.team.name} className="w-full h-full object-contain p-0.5" />
+                                ) : (
+                                  <span className="text-[7px] font-bold">{row.team.name.substring(0, 3).toUpperCase()}</span>
+                                )}
+                              </div>
+                              <span className="truncate">{row.team.name}</span>
+                            </td>
+                            <td className="py-2 px-1.5 text-center font-mono font-bold text-gray-500">{row.group}</td>
+                            <td className="py-2 px-1.5 text-center font-mono font-semibold text-gray-600">
+                              {row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff}
+                            </td>
+                            <td className="py-2 px-1.5 text-center font-mono text-gray-500">{row.goals_scored}</td>
+                            <td className="py-2 px-2.5 text-center font-mono font-bold bg-[#F9F7F2] text-[#8B6508] border-l border-[#B8860B]/20">
+                              {row.points}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 
