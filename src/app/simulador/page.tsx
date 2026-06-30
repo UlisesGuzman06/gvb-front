@@ -158,58 +158,8 @@ export default function SimuladorPage() {
   const handleRandom = useCallback(() => {
     cancelRandomSequence();
 
-    // 1. Reestablecemos el bracket únicamente a los partidos reales finalizados oficiales (para que siempre cambie al re-clickear)
+    // Empezamos con un bracket completamente vacío para una simulación 100% aleatoria
     let baseWinners: Record<string, Team> = {};
-    const playableRings: PlayableRing[] = [0, 2, 3, 4, 5];
-
-    for (const ringIndex of playableRings) {
-      const currentSlotTeams = deriveSlotTeams(DRAW_POSITIONS, baseWinners);
-      const pairCount = getPairCount(ringIndex);
-
-      for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
-        const [slotA, slotB] = getPairIndices(ringIndex, pairIndex);
-        const teamA = currentSlotTeams[slotKey(ringIndex, slotA)];
-        const teamB = currentSlotTeams[slotKey(ringIndex, slotB)];
-
-        if (!teamA || !teamB) continue;
-
-        const realMatch = allMatches.find((f: any) => 
-          f.status === 'FINISHED' && 
-          f.homeScore !== null && 
-          f.awayScore !== null && 
-          (
-            (f.home?.name === teamA.name && f.away?.name === teamB.name) ||
-            (f.home?.name === teamB.name && f.away?.name === teamA.name)
-          )
-        );
-
-        if (realMatch) {
-          const homeScore = realMatch.homeScore ?? 0;
-          const awayScore = realMatch.awayScore ?? 0;
-          let winnerTeam: Team | null = null;
-          
-          if (homeScore !== awayScore) {
-            winnerTeam = homeScore > awayScore
-              ? (realMatch.home?.name === teamA.name ? teamA : teamB)
-              : (realMatch.away?.name === teamA.name ? teamA : teamB);
-          } else {
-            const matchNum = (realMatch as any).num !== undefined && (realMatch as any).num !== null 
-              ? Number((realMatch as any).num) 
-              : Number(realMatch.id);
-              
-            const teamAAdvanced = allMatches.some((f: any) => {
-              const fNum = f.num !== undefined && f.num !== null ? Number(f.num) : Number(f.id);
-              return fNum > matchNum && (f.home?.name === teamA.name || f.away?.name === teamA.name);
-            });
-            winnerTeam = teamAAdvanced ? teamA : teamB;
-          }
-
-          if (winnerTeam) {
-            baseWinners[pairKey(ringIndex, pairIndex)] = winnerTeam;
-          }
-        }
-      }
-    }
 
     // Limpiamos los ganadores manuales/viejos en el estado para poder correr las animaciones desde la base limpia
     setPairWinners(baseWinners);
@@ -258,7 +208,7 @@ export default function SimuladorPage() {
     randomTimeoutRef.current = setTimeout(() => {
       resolveNextRing(0);
     }, 50);
-  }, [allMatches, cancelRandomSequence]);
+  }, [cancelRandomSequence]);
 
   // Auto-cargar resultados oficiales del fixture real al iniciar
   useEffect(() => {
