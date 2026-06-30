@@ -68,7 +68,7 @@ export default function AdminPage() {
   const [selectedGroup, setSelectedGroup] = useState<string>('A');
 
   // Input state for match results loading
-  const [matchInputs, setMatchInputs] = useState<Record<string, { home: string; away: string }>>({});
+  const [matchInputs, setMatchInputs] = useState<Record<string, { home: string; away: string; penaltyWinner?: string }>>({});
 
   // Tournament config inputs
   const [tournamentResults, setTournamentResults] = useState<BonusPredictions>({
@@ -226,13 +226,40 @@ export default function AdminPage() {
   // Handle Match Score Input Change
   const handleMatchInputChange = (matchId: string | number, side: 'home' | 'away', value: string) => {
     if (value !== '' && !/^\d+$/.test(value)) return;
-    setMatchInputs(prev => ({
-      ...prev,
-      [matchId]: {
-        ...(prev[matchId] || { home: '', away: '' }),
-        [side]: value
-      }
-    }));
+    setMatchInputs(prev => {
+      const currentMatch = allMatches.find(m => m.id === matchId);
+      const existing = prev[matchId] || {
+        home: currentMatch?.homeScore?.toString() || '',
+        away: currentMatch?.awayScore?.toString() || '',
+        penaltyWinner: currentMatch?.penaltyWinner || ''
+      };
+      return {
+        ...prev,
+        [matchId]: {
+          ...existing,
+          [side]: value
+        }
+      };
+    });
+  };
+
+  // Handle Match Penalty Winner Change
+  const handleMatchPenaltyWinnerChange = (matchId: string | number, winner: string) => {
+    setMatchInputs(prev => {
+      const currentMatch = allMatches.find(m => m.id === matchId);
+      const existing = prev[matchId] || {
+        home: currentMatch?.homeScore?.toString() || '',
+        away: currentMatch?.awayScore?.toString() || '',
+        penaltyWinner: currentMatch?.penaltyWinner || ''
+      };
+      return {
+        ...prev,
+        [matchId]: {
+          ...existing,
+          penaltyWinner: winner
+        }
+      };
+    });
   };
 
   // Submit Match Result
@@ -240,6 +267,14 @@ export default function AdminPage() {
     const input = matchInputs[matchId];
     if (!input || input.home === '' || input.away === '') {
       setToast({ message: 'Por favor ingresa ambos goles para guardar.', type: 'error' });
+      return;
+    }
+
+    const currentMatch = allMatches.find(m => m.id === matchId);
+    const isKnockout = currentMatch && !(currentMatch.round || '').toLowerCase().includes('fecha') && !(currentMatch.round || '').toLowerCase().includes('matchday');
+    
+    if (isKnockout && input.home === input.away && !input.penaltyWinner) {
+      setToast({ message: 'Por favor selecciona quién ganó en la definición por penales.', type: 'error' });
       return;
     }
 
@@ -254,7 +289,8 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           homeScore: parseInt(input.home, 10),
-          awayScore: parseInt(input.away, 10)
+          awayScore: parseInt(input.away, 10),
+          penaltyWinner: (isKnockout && input.home === input.away) ? input.penaltyWinner : null
         })
       });
 
@@ -285,6 +321,7 @@ export default function AdminPage() {
   // Submit Bulk Match Results
   const handleSaveAllResults = async () => {
     // Find all matches in the current view that have both home and away scores entered
+    let validationError = false;
     const matchesToUpdate = filteredMatches
       .map(match => {
         // Look up input, falling back to original values if not edited but already finished
@@ -292,19 +329,37 @@ export default function AdminPage() {
         if (input && input.home !== '' && input.away !== '') {
           const homeScore = parseInt(input.home, 10);
           const awayScore = parseInt(input.away, 10);
+          const penaltyWinner = input.penaltyWinner || '';
+
+          const isKnockout = !(match.round || '').toLowerCase().includes('fecha') && !(match.round || '').toLowerCase().includes('matchday');
+          if (isKnockout && homeScore === awayScore && !penaltyWinner) {
+            validationError = true;
+          }
+
           // Check if it's different from the original score to avoid redundant updates
-          const isDifferent = match.homeScore !== homeScore || match.awayScore !== awayScore || match.status !== 'FINISHED';
+          const isDifferent = 
+            match.homeScore !== homeScore || 
+            match.awayScore !== awayScore || 
+            match.penaltyWinner !== (penaltyWinner || null) ||
+            match.status !== 'FINISHED';
+
           if (isDifferent) {
             return {
               id: String(match.id),
               homeScore,
-              awayScore
+              awayScore,
+              penaltyWinner: (isKnockout && homeScore === awayScore) ? penaltyWinner : null
             };
           }
         }
         return null;
       })
-      .filter(Boolean) as { id: string; homeScore: number; awayScore: number }[];
+      .filter(Boolean) as { id: string; homeScore: number; awayScore: number; penaltyWinner?: string | null }[];
+
+    if (validationError) {
+      setToast({ message: 'Por favor selecciona quién ganó en la definición por penales para todos los partidos empatados.', type: 'error' });
+      return;
+    }
 
     if (matchesToUpdate.length === 0) {
       setToast({ message: 'No hay cambios en los resultados para guardar.', type: 'error' });
@@ -595,7 +650,7 @@ export default function AdminPage() {
             ) : filteredMatches.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filteredMatches.map(match => {
-                  const input = matchInputs[match.id] || { home: match.homeScore?.toString() || '', away: match.awayScore?.toString() || '' };
+                  const input = matchInputs[match.id] || { home: match.homeScore?.toString() || '', away: match.awayScore?.toString() || '', penaltyWinner: match.penaltyWinner || '' };
                   const isFinished = match.status === 'FINISHED';
 
                   return (
@@ -618,7 +673,7 @@ export default function AdminPage() {
                       <div className="flex items-center justify-between gap-4 py-2">
                         {/* Home Team */}
                         <div className="flex-1 flex items-center gap-3 justify-end text-right">
-                          <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
+                           <span className="text-sm font-bold uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
                             {match.home.name}
                           </span>
                           <div className="h-8 w-8 bg-[#0B2545] border border-gray-700 flex items-center justify-center font-mono font-bold text-xs text-gray-400 shrink-0 overflow-hidden">
@@ -663,6 +718,41 @@ export default function AdminPage() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Definición por Penales selector */}
+                      {!(match.round || '').toLowerCase().includes('fecha') && !(match.round || '').toLowerCase().includes('matchday') && input.home !== '' && input.away !== '' && input.home === input.away && (
+                        <div className="mt-4 p-3 bg-[#0B2545]/60 border-2 border-[#111111] shadow-[3px_3px_0px_0px_#111111] flex flex-col gap-2 rounded">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-[#B8860B] block text-center">
+                            Definición por Penales
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleMatchPenaltyWinnerChange(match.id, match.home.name)}
+                              className={cn(
+                                "flex-1 py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider border-2 transition-all",
+                                input.penaltyWinner === match.home.name
+                                  ? "bg-[#B8860B] text-[#111111] border-[#B8860B]"
+                                  : "bg-[#0B2545] text-gray-300 border-gray-700 hover:text-white"
+                              )}
+                            >
+                              Ganó {match.home.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMatchPenaltyWinnerChange(match.id, match.away.name)}
+                              className={cn(
+                                "flex-1 py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider border-2 transition-all",
+                                input.penaltyWinner === match.away.name
+                                  ? "bg-[#B8860B] text-[#111111] border-[#B8860B]"
+                                  : "bg-[#0B2545] text-gray-300 border-gray-700 hover:text-white"
+                              )}
+                            >
+                              Ganó {match.away.name}
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="mt-4 pt-3 border-t border-[#0B2545] flex justify-between items-center text-xs">
                         <span className="text-gray-400 font-mono">{match.date} | {match.time.substring(0, 5)}</span>

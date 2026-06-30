@@ -50,6 +50,7 @@ export interface Fixture {
   homeScore?: number | null;
   awayScore?: number | null;
   status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED';
+  penaltyWinner?: string | null;
 }
 
 export interface LiveScore {
