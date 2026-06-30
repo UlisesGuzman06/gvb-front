@@ -232,8 +232,14 @@ function BracketMatchCard({ matchNum, matchesMap }: { matchNum: number; matchesM
   const homeLogo = isPlaceholderHome ? null : match.home?.logo;
   const awayLogo = isPlaceholderAway ? null : match.away?.logo;
 
-  const isHomeWinner = isFinished && match.homeScore !== null && match.awayScore !== null && match.homeScore > match.awayScore;
-  const isAwayWinner = isFinished && match.homeScore !== null && match.awayScore !== null && match.awayScore > match.homeScore;
+  const isHomeWinner = isFinished && match.homeScore !== null && match.awayScore !== null && (
+    match.homeScore > match.awayScore ||
+    (match.homeScore === match.awayScore && match.penaltyWinner === (match.home?.name || match.homeTeam))
+  );
+  const isAwayWinner = isFinished && match.homeScore !== null && match.awayScore !== null && (
+    match.awayScore > match.homeScore ||
+    (match.homeScore === match.awayScore && match.penaltyWinner === (match.away?.name || match.awayTeam))
+  );
 
   return (
     <div className={cn(cardWidth, "bg-white border border-[#111111] shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] overflow-hidden shrink-0 flex flex-col font-inter")}>
